@@ -162,3 +162,110 @@ def _style_results(sheet, results: pd.DataFrame) -> None:
         sheet.cell(row=r, column=2).font = Font(bold=True)
         sheet.cell(row=r, column=5).alignment = Alignment(wrap_text=True, vertical="top")
     sheet.freeze_panes = "C2"
+
+
+# ---------------------------------------------------------------------------
+# The uploaded file itself, with the predictions added as extra columns
+# ---------------------------------------------------------------------------
+ANNOTATION_COLUMNS = {
+    "AI decision": "decision",
+    "AI RF score": "rf_score",
+    "AI explanation": "explanation",
+    "AI missing variables": "missing_variables",
+    "AI notes": "notes",
+}
+INFO_SHEET = "AI prediction info"
+_FILLS = {
+    POSITIVE_TXT: "F8D7D3", NEGATIVE_TXT: "D5ECDD", INCONCLUSIVE_TXT: "FCEBC5",
+    NOT_APPLICABLE_TXT: "E7E6E2", CHECK_DATA_TXT: "E7E6E2",
+}
+
+
+def _info_rows(results: pd.DataFrame, bundle: dict) -> list[tuple[str, str]]:
+    thr = bundle["thresholds"]
+    dec = bundle["config"]["decision"]
+    gz = bundle["config"]["grey_zone"]
+    rows = [
+        ("Generated", pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")),
+        ("Model trained", str(bundle["created"])),
+        ("Training data", str(bundle["report"].get("source_file") or "")),
+        ("Training patients (grey zone)", str(bundle["report"]["cohort"]["n_train"])),
+        ("Grey zone (p-tau217, pg/mL)", f"{gz['ptau217_lower']} - {gz['ptau217_upper']}"),
+        ("POSITIVE if RF score >=", "none (not certified)" if thr["positive"] is None else f"{thr['positive']:.2f}"),
+        ("NEGATIVE if RF score <=", "none (not certified)" if thr["negative"] is None else f"{thr['negative']:.2f}"),
+        ("Safety target", f"PPV >= {dec['target_ppv']:.0%}, NPV >= {dec['target_npv']:.0%}"
+                          + (f" (one-sided {dec['confidence_level']:.0%} lower bound)"
+                             if dec["use_confidence_bound"] else " (point estimate)")),
+        ("", ""),
+    ]
+    rows += [(f"Patients: {k}", str(v)) for k, v in summarize(results).items()]
+    rows += [("", ""), ("DISCLAIMER", DISCLAIMER)]
+    return rows
+
+
+def annotated_original(results: pd.DataFrame, prepared: PreparedData, bundle: dict) -> bytes:
+    """Return the uploaded file with the prediction columns added to the right of each patient row.
+
+    For an Excel upload the original workbook is kept (other sheets, formatting, column order);
+    a CSV upload is converted to Excel. A sheet "AI prediction info" describes the model used.
+    Columns added by a previous run are overwritten, not duplicated.
+    """
+    from openpyxl import Workbook, load_workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    source = prepared.source or {"kind": "csv"}
+    if source["kind"] == "excel":
+        wb = load_workbook(io.BytesIO(source["content"]))
+        ws = wb[source["sheet"]]
+        rows = source["rows"]
+    else:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Patients"
+        ws.append([str(c) for c in prepared.raw.columns])
+        for record in prepared.raw.itertuples(index=False):
+            ws.append([None if pd.isna(v) else v for v in record])
+        rows = list(range(2, prepared.n + 2))
+
+    headers = {str(c.value).strip(): c.column for c in ws[1] if c.value is not None}
+    last = max(headers.values(), default=0)
+    columns = {}
+    for name in ANNOTATION_COLUMNS:
+        if name not in headers:
+            last += 1
+            headers[name] = last
+        columns[name] = headers[name]
+        cell = ws.cell(row=1, column=columns[name], value=name)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor="DCE8F8")
+
+    for i, excel_row in enumerate(rows):
+        result = results.iloc[i]
+        for name, key in ANNOTATION_COLUMNS.items():
+            value = result[key]
+            value = None if value is None or (isinstance(value, float) and pd.isna(value)) or value == "" else value
+            cell = ws.cell(row=excel_row, column=columns[name], value=value)
+            if key == "decision":
+                cell.font = Font(bold=True)
+                cell.fill = PatternFill("solid", fgColor=_FILLS.get(result[key], "FFFFFF"))
+            elif key == "explanation":
+                cell.alignment = Alignment(wrap_text=False, vertical="top")
+
+    from openpyxl.utils import get_column_letter
+    widths = {"AI decision": 32, "AI RF score": 12, "AI explanation": 80, "AI missing variables": 30, "AI notes": 40}
+    for name, width in widths.items():
+        ws.column_dimensions[get_column_letter(columns[name])].width = width
+
+    if INFO_SHEET in wb.sheetnames:
+        del wb[INFO_SHEET]
+    info = wb.create_sheet(INFO_SHEET)
+    for item, value in _info_rows(results, bundle):
+        info.append([item, value])
+    info.column_dimensions["A"].width = 34
+    info.column_dimensions["B"].width = 90
+    for cell in info["A"]:
+        cell.font = Font(bold=True)
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()

@@ -55,6 +55,7 @@ class PreparedData:
     messages: list[str] = field(default_factory=list)          # file-level warnings
     columns_found: dict[str, str] = field(default_factory=dict)  # variable -> header in file
     unrecognized_columns: list[str] = field(default_factory=list)
+    source: dict | None = None        # original file (bytes, sheet, row numbers) when read from disk/upload
 
     @property
     def n(self) -> int:
@@ -88,11 +89,13 @@ def read_table(source: str | Path | BinaryIO | bytes, filename: str | None = Non
         sheet = next((s for s in workbook.sheet_names if s.strip().lower() == "patients"),
                      workbook.sheet_names[0])
         df = pd.read_excel(workbook, sheet_name=sheet, dtype=object)
+        source = {"kind": "excel", "sheet": sheet, "content": content}
     elif suffix in {".csv", ".txt"}:
         text = content.decode("utf-8-sig", errors="replace")
         first_line = text.splitlines()[0] if text else ""
         sep = ";" if first_line.count(";") > first_line.count(",") else ","
         df = pd.read_csv(io.StringIO(text), sep=sep, dtype=object)
+        source = {"kind": "csv", "sheet": None, "content": content}
     elif suffix == ".xls":
         raise DataError("Old .xls format is not supported: open it in Excel and 'Save as' .xlsx.")
     else:
@@ -100,7 +103,11 @@ def read_table(source: str | Path | BinaryIO | bytes, filename: str | None = Non
 
     df = df.dropna(axis=0, how="all").dropna(axis=1, how="all")
     df = df.loc[:, [not str(c).startswith("Unnamed") for c in df.columns]]
-    return df.reset_index(drop=True)
+    # Excel/CSV row number of each patient (header = row 1), used to annotate the original file
+    source["rows"] = [int(i) + 2 for i in df.index]
+    df = df.reset_index(drop=True)
+    df.attrs["source"] = source
+    return df
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +237,8 @@ def _match_columns(df: pd.DataFrame, cfg: dict) -> tuple[dict[str, str], list[st
     for header in df.columns:
         target = lookup.get(normalize_name(header))
         if target is None:
-            unrecognized.append(str(header))
+            if not str(header).startswith("AI "):          # columns added by a previous prediction run
+                unrecognized.append(str(header))
         elif target in found:
             messages.append(f"Column '{header}' ignored: '{found[target]}' already provides '{target}'.")
         else:
@@ -358,7 +366,8 @@ def prepare_table(df: pd.DataFrame, cfg: dict, require_label: bool = False) -> P
             raise DataError("No usable lumbar-puncture results (Positive/Negative) were found.")
 
     columns_found = {k: str(v) for k, v in found.items() if not k.startswith("__")}
-    return PreparedData(ids=ids, table=table, labels=labels, raw=df, row_issues=row_issues,
+    return PreparedData(source=df.attrs.get("source"), ids=ids, table=table, labels=labels, raw=df,
+                        row_issues=row_issues,
                         row_notes=row_notes, messages=messages, columns_found=columns_found,
                         unrecognized_columns=unrecognized)
 

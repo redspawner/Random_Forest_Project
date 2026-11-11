@@ -13,7 +13,7 @@ from pathlib import Path
 from greyzone_rf.config import PROJECT_ROOT
 from greyzone_rf.data import DataError, load_patient_file
 from greyzone_rf.model import load_bundle
-from greyzone_rf.predict import DISCLAIMER, predict_prepared, results_to_excel, summarize
+from greyzone_rf.predict import DISCLAIMER, annotated_original, predict_prepared, results_to_excel, summarize
 
 
 def main() -> int:
@@ -37,6 +37,8 @@ def main() -> int:
     results = predict_prepared(bundle, prepared)
     out = Path(args.out) if args.out else Path(args.file).with_name(Path(args.file).stem + "_results.xlsx")
     out.write_bytes(results_to_excel(results, prepared, bundle))
+    annotated = out.with_name(Path(args.file).stem + "_with_predictions.xlsx")
+    annotated.write_bytes(annotated_original(results, prepared, bundle))
 
     for message in prepared.messages:
         print(f"Note: {message}")
@@ -45,7 +47,7 @@ def main() -> int:
     print()
     for decision, count in summarize(results).items():
         print(f"  {decision:<36} {count}")
-    print(f"\nResults written to {out}\n{DISCLAIMER}")
+    print(f"\nResults written to {out}\nOriginal file with predictions added: {annotated}\n{DISCLAIMER}")
     return 0
 
 

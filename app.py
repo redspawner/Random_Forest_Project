@@ -17,7 +17,8 @@ from greyzone_rf.config import PROJECT_ROOT, load_config
 from greyzone_rf.data import DataError, load_patient_file
 from greyzone_rf.model import TrainingError, load_bundle, save_bundle, train_model
 from greyzone_rf.predict import (CHECK_DATA_TXT, DECISION_ORDER, DISCLAIMER, INCONCLUSIVE_TXT, NEGATIVE_TXT,
-                                 NOT_APPLICABLE_TXT, POSITIVE_TXT, predict_prepared, results_to_excel, summarize)
+                                 NOT_APPLICABLE_TXT, POSITIVE_TXT, annotated_original, predict_prepared,
+                                 results_to_excel, summarize)
 from greyzone_rf.report import FIGURES, markdown_report, write_report
 from greyzone_rf.template import build_template, dictionary_frame
 
@@ -152,8 +153,16 @@ def show_predictions(upload, bundle: dict) -> None:
         },
     )
     stem = Path(upload.name).stem
-    st.download_button("Download results (Excel)", data=results_to_excel(results, prepared, bundle),
-                       file_name=f"{stem}_results.xlsx", mime=XLSX_MIME, type="primary")
+    d1, d2 = st.columns(2)
+    d1.download_button("Download my file with the predictions added", type="primary",
+                       data=annotated_original(results, prepared, bundle),
+                       file_name=f"{stem}_with_predictions.xlsx", mime=XLSX_MIME,
+                       help="Your uploaded file, unchanged, with extra columns on each patient row: AI decision, "
+                            "RF score, explanation, missing variables and notes. A sheet 'AI prediction info' "
+                            "describes the model used.")
+    d2.download_button("Download results report (Excel)", data=results_to_excel(results, prepared, bundle),
+                       file_name=f"{stem}_results.xlsx", mime=XLSX_MIME,
+                       help="Separate workbook: results table, summary and a copy of the input.")
 
 
 # ---------------------------------------------------------------------------

@@ -15,6 +15,7 @@ data/*
 !data/synthetic/
 !data/README.md
 *_results.xlsx
+*_with_predictions.xlsx
 outputs/
 
 # OS / editors

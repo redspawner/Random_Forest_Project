@@ -71,3 +71,64 @@ def test_rejects_tiny_cohort(fast_cfg):
     tiny = prepare_table(grey_zone_cohort(8, seed=2), fast_cfg, require_label=True)
     with pytest.raises(TrainingError):
         train_model(tiny, fast_cfg, nested=False)
+
+
+def _excel_with_gap(df: pd.DataFrame) -> bytes:
+    """Excel file with an empty row between patients and an extra sheet, like a hand-made file."""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Patients"
+    ws.append(list(df.columns))
+    for i, record in enumerate(df.itertuples(index=False)):
+        if i == 3:
+            ws.append([None] * len(df.columns))           # blank row in the middle
+        ws.append([None if pd.isna(v) else v for v in record])
+    wb.create_sheet("My notes")["A1"] = "keep me"
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
+def test_annotated_original_excel(bundle):
+    from openpyxl import load_workbook
+
+    from greyzone_rf.data import load_patient_file
+    from greyzone_rf.predict import INFO_SHEET, annotated_original
+
+    new, _ = demo_new_patients(8, seed=3)
+    content = _excel_with_gap(new)
+    prepared = load_patient_file(content, bundle["config"], filename="new.xlsx")
+    results = predict_prepared(bundle, prepared)
+    out = annotated_original(results, prepared, bundle)
+    wb = load_workbook(io.BytesIO(out))
+    assert {"Patients", "My notes", INFO_SHEET} <= set(wb.sheetnames)
+    ws = wb["Patients"]
+    header = [c.value for c in ws[1]]
+    assert header[:len(new.columns)] == list(new.columns)             # original columns untouched
+    col = header.index("AI decision") + 1
+    assert ws.cell(row=5, column=1).value is None                     # the blank row stays blank
+    for i, pid in enumerate(results["patient_id"]):
+        excel_row = i + 2 if i < 3 else i + 3
+        assert ws.cell(row=excel_row, column=1).value == pid
+        assert ws.cell(row=excel_row, column=col).value == results["decision"][i]
+
+    # annotating an already annotated file overwrites the columns instead of duplicating them
+    again = load_patient_file(out, bundle["config"], filename="again.xlsx")
+    twice = load_workbook(io.BytesIO(annotated_original(predict_prepared(bundle, again), again, bundle)))
+    assert [c.value for c in twice["Patients"][1]].count("AI decision") == 1
+
+
+def test_annotated_original_csv(bundle):
+    from openpyxl import load_workbook
+
+    from greyzone_rf.data import load_patient_file
+    from greyzone_rf.predict import annotated_original
+
+    new, _ = demo_new_patients(5, seed=4)
+    prepared = load_patient_file(new.to_csv(index=False).encode(), bundle["config"], filename="new.csv")
+    results = predict_prepared(bundle, prepared)
+    ws = load_workbook(io.BytesIO(annotated_original(results, prepared, bundle)))["Patients"]
+    header = [c.value for c in ws[1]]
+    assert header[0] == "patient_id" and "AI decision" in header and ws.max_row == len(new) + 1

@@ -87,12 +87,19 @@ The browser opens at <http://localhost:8501>. The app has four tabs:
 
 | Tab | What it does |
 |---|---|
-| **Classify new patients** | Drag and drop an Excel/CSV file → each patient gets POSITIVE / NEGATIVE / INCONCLUSIVE - refer to LP, with the reason. Download the results as Excel. |
+| **Classify new patients** | Drag and drop an Excel/CSV file → each patient gets POSITIVE / NEGATIVE / INCONCLUSIVE - refer to LP, with the reason. Two downloads: **your own file with the predictions added** (see below), or a separate results report. |
 | **Train model** | Drag and drop a training file with LP results → trains, validates and saves a new model. |
 | **Model report** | Cohort, AUC, chosen thresholds, honest (nested) estimate of LPs avoided and errors, figures. |
 | **Template & help** | Download the Excel template and the demo files, see the data dictionary. |
 
-You can also predict without the app:
+**"Download my file with the predictions added"** gives back the uploaded workbook unchanged
+(same columns, formatting and other sheets), with five extra columns at the end of each patient's
+row: `AI decision` (colored), `AI RF score`, `AI explanation`, `AI missing variables` and `AI notes`.
+A sheet called `AI prediction info` records the model, thresholds, date and disclaimer. A CSV upload
+comes back as an Excel file. If you upload an annotated file again, the `AI ...` columns are
+overwritten, not duplicated, and they are never used as model variables.
+
+You can also predict without the app (this writes both files next to the input):
 
 ```bash
 python predict.py data/synthetic/synthetic_new_patients.xlsx
