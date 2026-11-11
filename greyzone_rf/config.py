@@ -114,6 +114,11 @@ def validate_config(cfg: dict) -> None:
     for spec in specs:
         if spec.compute is None:
             continue
+        if spec.compute == "anemia_who":
+            missing = {"hemoglobin", "sex"} - names
+            if missing:
+                raise ConfigError(f"config.yaml: anemia_who needs features {sorted(missing)}")
+            continue
         if spec.compute == "ckd_epi_2021":
             missing = {"creatinine", "age", "sex"} - names
             if missing:
@@ -122,7 +127,7 @@ def validate_config(cfg: dict) -> None:
         parts = spec.ratio_parts
         if parts is None:
             raise ConfigError(
-                f"config.yaml: feature '{spec.name}': compute must be 'colA / colB' or 'ckd_epi_2021'"
+                f"config.yaml: feature '{spec.name}': compute must be 'colA / colB', 'ckd_epi_2021' or 'anemia_who'"
             )
         for part in parts:
             if part not in names:

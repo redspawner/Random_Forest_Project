@@ -130,7 +130,7 @@ default_model:
 - **If the model is missing or cannot be loaded**, for example on a computer with another
   scikit-learn version, the app re-trains it from the dataset (about 1 minute, once). Training
   uses fixed random seeds, so the result is the same model: I deleted it and let the app retrain
-  it, and the thresholds came out identical (0.76 / 0.20). To load the shipped file as-is, install the
+  it, and the thresholds came out identical. To load the shipped file as-is, install the
   exact versions in `requirements-pinned.txt`.
 - **Re-train it yourself** with `python train.py --default`. This also rewrites `manifest.json`.
   `python make_demo_data.py` never overwrites the dataset unless you pass `--overwrite-default`.
@@ -180,6 +180,9 @@ Download `templates/patient_data_template.xlsx` (or use the button in the app). 
 | `egfr` | mL/min/1.73 m² | if blank, computed from `creatinine` (CKD-EPI 2021) |
 | `creatinine` | mg/dL | only used to compute eGFR |
 | `triglycerides` | mg/dL | |
+| `hemoglobin` | g/dL | complete blood count; `anemia` (WHO: < 12 women, < 13 men) is computed from it |
+| `glucose` | mg/dL | fasting glucose (diabetes) |
+| `ldl`, `hdl` | mg/dL | cholesterol fractions (vascular risk) |
 | `ptau217` | pg/mL | **required**; defines the grey zone |
 | `ptau181`, `ab42`, `ab40`, `gfap`, `nfl` | pg/mL | |
 | `ab42_ab40_ratio` | ratio | if blank, computed from ab42/ab40 (`ptau217/ab42` is also computed) |
@@ -201,6 +204,24 @@ The reader is forgiving and records every correction in the output:
 
 **Adding a new variable** (e.g. homocysteine) needs no code. Add a block under `features:` in
 `config.yaml` (name, unit, plausible min/max), add the column to the Excel file, and retrain.
+
+### Why these blood-panel variables
+
+Only variables from a **standard blood count and routine biochemistry** were added, because they
+are likely to be available from a recent analysis:
+
+| Variable | Why it is included |
+|---|---|
+| Haemoglobin / anaemia | Anaemia raises plasma p-tau217 independently of kidney function. The optimal cut-off was 0.595 vs 0.425 pg/mL in 2,571 patients ([JAMA Neurology 2026](https://jamanetwork.com/journals/jamaneurology/fullarticle/2844557)). |
+| Creatinine / eGFR (already present) | The strongest peripheral confounder of p-tau217, NfL and GFAP. |
+| Fasting glucose | Diabetes and insulin resistance are frequent co-morbidities. Studies so far find **no** clear effect on the p-tau217–amyloid relation, but glucose marks vascular/metabolic causes of cognitive decline. |
+| LDL, HDL (triglycerides already present) | Vascular risk; HDL has been associated with plasma AD biomarkers. |
+
+Not added, because they are less routine or less supported: HbA1c (often only in known diabetics),
+homocysteine, CRP, albumin, liver enzymes, B12/folate/TSH (standard dementia work-up, but they
+explain cognition rather than amyloid). **Hypertension** has the most consistent signal (higher
+p-tau217 in amyloid-negative people), but it is a clinical variable, not a blood test. It could be
+added as a yes/no column. Full references are in `data/default_training/DATASET_CARD.md`.
 
 ## 5. How the "95 % confidence" decision works
 
@@ -233,9 +254,9 @@ wrong?* For the default model (600 synthetic grey-zone patients):
 
 | | in-sample (optimistic) | nested CV (honest) |
 |---|---|---|
-| patients resolved (LPs avoided) | 50 % | **43 %** |
-| PPV of POSITIVE calls | 98 % (155/158) | 97 % (128/132) |
-| NPV of NEGATIVE calls | 99 % (139/141) | 99 % (124/125) |
+| patients resolved (LPs avoided) | 50 % | **38 %** |
+| PPV of POSITIVE calls | 99 % (111/112) | 94 % (84/89; 95 % CI 87–98 %) |
+| NPV of NEGATIVE calls | 98 % (183/187) | 97 % (134/138) |
 
 ## 6. How many patients do you need?
 

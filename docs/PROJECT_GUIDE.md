@@ -144,8 +144,12 @@ This translates into a **supervised binary classification** problem:
 
   | | Optimistic, same patients | Nested CV, unseen patients |
   |---|---|---|
-  | Patients resolved | 50 % | 43 % |
-  | Wrong calls | – | 5 of 600 |
+  | Patients resolved | 50 % | 38 % |
+  | PPV of POSITIVE calls | 99 % | 94 % (84/89) |
+  | Wrong calls | – | 9 of 600 |
+
+  The honest PPV (94 %) is slightly *below* the 95 % target. Its confidence interval (87–98 %) still
+  includes 95 %, but this is exactly why the honest estimate must be reported, not the in-sample one.
 
 - **Where:** `model.py` (`nested_evaluation`).
 
@@ -212,10 +216,29 @@ range seen in training".
   | p-tau217 increase per 10 mL/min lower eGFR | +12 % | +12 % |
   | Age share of NfL variance | 26 % | 27 % |
   | Age share of GFAP variance | 12 % | 12 % |
+  | p-tau217 ratio, anaemic vs not | 1.40 | 1.42 |
 
 - **Honesty note:** these are synthetic patients, and the simulation is cleaner than reality.
-  The model's AUC of 0.94 in the grey zone is higher than the 0.75–0.88 reported for real
+  The model's AUC of 0.93 in the grey zone is higher than the 0.75–0.88 reported for real
   gray-zone models, so real performance will be lower. ADNI is the real dataset to request next.
+
+## Step 12b - Routine blood-panel variables
+
+- **What:** haemoglobin (with a computed WHO anaemia flag), fasting glucose, LDL and HDL were added
+  to `config.yaml`, the template and the synthetic generator. All come from a standard blood count
+  and routine biochemistry.
+- **Why:** anaemia and kidney function raise plasma p-tau217 without more brain amyloid (JAMA
+  Neurology 2026). Diabetes and lipids mark vascular and metabolic causes of cognitive decline.
+- **What it changed:**
+  - In the simulation, glucose, LDL and HDL were given no effect on p-tau217, because the
+    published evidence is mixed or null. They therefore carry no information, and their
+    permutation importance is about 0.
+  - Haemoglobin carries a small amount of information.
+  - With 23 instead of 18 variables, the honest share of LPs avoided went from 43 % to 38 %, and
+    the honest PPV from 97 % to 94 %. Part of this is a different random sample. Part is that
+    uninformative variables add noise.
+- **Lesson:** add a variable only if it is likely to carry information. With real data, check its
+  permutation importance and the nested results with and without it.
 
 ## Step 13 - Sample-size experiments
 
@@ -253,7 +276,7 @@ meaningful share of LPs.
 
 ## Step 15 - Quality assurance
 
-- **24 automated tests** (`python -m pytest`) cover:
+- **25 automated tests** (`python -m pytest`) cover:
   - the statistics, e.g. the rule-of-three value 59;
   - file parsing (decimal commas, aliases, semicolon CSVs, impossible values, eGFR);
   - the full train→predict pipeline;

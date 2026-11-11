@@ -97,3 +97,11 @@ def test_template_round_trip(cfg):
 
 def test_grey_zone(cfg):
     assert list(in_grey_zone([0.10, 0.14, 0.30, 0.43, 0.50], cfg)) == [False, True, True, True, False]
+
+
+def test_anemia_computed_from_hemoglobin_and_sex(cfg):
+    df = pd.DataFrame({"ptau217": [0.2] * 5, "sex": ["F", "F", "M", "M", None],
+                       "Hemoglobina (g/dL)": [11.5, 12.5, 12.5, 13.5, 10.0]})
+    p = prepare_table(df, cfg)
+    assert list(p.table["anemia"][:4]) == [1, 0, 1, 0]
+    assert np.isnan(p.table["anemia"][4])          # sex unknown -> not computed

@@ -90,6 +90,7 @@ random_forest:
 #  compute       : how to fill the variable when it is blank:
 #                    "<colA> / <colB>"  ratio of two other columns
 #                    "ckd_epi_2021"     eGFR from creatinine, age and sex
+#                    "anemia_who"       1/0 from haemoglobin and sex (WHO: <12 g/dL women, <13 men)
 #  use_as_feature: false -> read and checked, but not given to the model
 #  in_template   : false -> computed only, not shown in the Excel template
 #  aliases       : alternative column names accepted in the file
@@ -155,6 +156,50 @@ features:
     example: 120
     aliases: [trigliceridos, tg]
 
+  # --- Routine blood panel / biochemistry (usually available from recent standard analyses) ---
+  # Chosen because they are associated with plasma p-tau217 levels or with non-AD causes
+  # of the same clinical picture, independently of brain amyloid (sources in DATASET_CARD.md).
+  - name: hemoglobin
+    description: Blood haemoglobin (complete blood count) - anaemia raises plasma p-tau217
+    unit: g/dL
+    min: 4
+    max: 22
+    example: 13.4
+    aliases: [hemoglobina, hb, hgb, haemoglobin]
+
+  - name: anemia
+    type: binary
+    description: Anaemia, WHO definition (computed from haemoglobin and sex)
+    unit: 0/1
+    compute: anemia_who
+    in_template: false
+    aliases: [anemia_who, anaemia]
+
+  - name: glucose
+    description: Fasting plasma glucose (diabetes / insulin resistance)
+    unit: mg/dL
+    min: 30
+    max: 800
+    example: 98
+    aliases: [glicose, glicemia, glycemia, fasting_glucose]
+
+  - name: ldl
+    description: LDL cholesterol (vascular risk)
+    unit: mg/dL
+    min: 10
+    max: 500
+    example: 115
+    aliases: [ldl_cholesterol, colesterol_ldl, ldl_c]
+
+  - name: hdl
+    description: HDL cholesterol (vascular risk; associated with plasma AD biomarkers)
+    unit: mg/dL
+    min: 5
+    max: 200
+    example: 55
+    aliases: [hdl_cholesterol, colesterol_hdl, hdl_c]
+
+  # --- Plasma Alzheimer / neuronal biomarkers ---
   - name: ptau217
     description: Plasma p-tau217 (REQUIRED; defines the grey zone)
     unit: pg/mL

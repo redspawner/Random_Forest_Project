@@ -26,6 +26,7 @@ from .data import ckd_epi_2021
 PTAU_BASE, PTAU_AMY, PTAU_BURDEN, PTAU_SD = 0.10, 1.25, 0.35, 0.62
 RATIO_AMY, RATIO_SD = 0.008, 0.0095
 GFAP_AMY, COG_AMY, MTA_AMY = 0.30, 0.8, 0.5
+ANEMIA_PTAU = np.log(1.25)   # direct effect; with its link to age/eGFR the observed ratio is ~1.4 as in JAMA Neurol 2026
 EGFR_PTAU = np.log(1.12) / 10     # +12% p-tau217 per 10 mL/min lower eGFR (Lumipulse, Mayo data)
 
 
@@ -59,10 +60,21 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
     creat = _creatinine_from_egfr(egfr, age, female)
 
     renal = 85 - egfr
+
+    # Routine blood panel. A separate random stream keeps all other simulated values unchanged.
+    rng_lab = np.random.default_rng(seed + 7919)
+    hemoglobin = np.clip(rng_lab.normal(np.where(female == 1, 13.4, 14.6) - 0.025 * np.clip(renal, 0, None)
+                                        - 0.01 * (age - 71), 1.2), 7, 18)
+    anemia = np.where(female == 1, hemoglobin < 12.0, hemoglobin < 13.0).astype(int)
+    diabetes = (rng_lab.random(n) < _sigmoid(-1.6 + 0.08 * (bmi - 26.5))).astype(int)
+    glucose = np.exp(rng_lab.normal(np.log(np.where(diabetes == 1, 145, 96)) + 0.006 * (bmi - 26.5), 0.13))
+    ldl = np.clip(rng_lab.normal(118, 35, n), 30, 300)
+    hdl = np.clip(rng_lab.normal(52 + 7 * female - 0.9 * (bmi - 26.5), 13, n), 20, 120)
+
     ptau_noise = rng.normal(0, PTAU_SD, n)   # biological + analytical variation shared by p-tau isoforms
     ln_ptau217 = (np.log(PTAU_BASE) + PTAU_AMY * amyloid + PTAU_BURDEN * burden + 0.010 * (age - 71)
                   + EGFR_PTAU * renal - 0.030 * (bmi - 26.5) - 0.15 * np.log(tg / 125)
-                  + ptau_noise)
+                  + ANEMIA_PTAU * anemia + ptau_noise)
     ln_ptau181 = (np.log(1.3) + 0.30 * amyloid + 0.15 * burden + 0.008 * renal
                   + 0.6 * ptau_noise + rng.normal(0, 0.35, n))
     ab40 = np.clip(rng.normal(300 + 1.2 * renal, 45, n), 120, 700)
@@ -75,11 +87,11 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
 
     impairment = amyloid * np.clip(burden + 0.3, 0, None) * COG_AMY + 0.5 * non_ad
     moca = np.clip(np.round(26.5 + 0.18 * (education - 8) - 0.06 * (age - 71)
-                            - 2.6 * impairment + rng.normal(0, 2.0, n)), 0, 30)
+                            - 2.6 * impairment - 0.5 * diabetes + rng.normal(0, 2.0, n)), 0, 30)
     mta = np.clip(np.round(0.8 + 0.06 * (age - 71) + MTA_AMY * amyloid * (burden + 0.4)
                            + 0.3 * non_ad + rng.normal(0, 0.6, n)), 0, 4)
-    fazekas = np.clip(np.round(1.0 + 0.04 * (age - 71) + 0.012 * renal + 0.3 * non_ad
-                               + rng.normal(0, 0.7, n)), 0, 3)
+    fazekas = np.clip(np.round(1.0 + 0.04 * (age - 71) + 0.012 * renal + 0.3 * non_ad + 0.3 * diabetes
+                               + 0.003 * (ldl - 118) - 0.005 * (hdl - 55) + rng.normal(0, 0.7, n)), 0, 3)
 
     return pd.DataFrame({
         "age": np.round(age).astype(int),
@@ -89,6 +101,10 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
         "egfr": np.round(egfr).astype(int),
         "creatinine": np.round(creat, 2),
         "triglycerides": np.round(tg).astype(int),
+        "hemoglobin": np.round(hemoglobin, 1),
+        "glucose": np.round(glucose).astype(int),
+        "ldl": np.round(ldl).astype(int),
+        "hdl": np.round(hdl).astype(int),
         "ptau217": np.round(np.exp(ln_ptau217), 3),
         "ptau181": np.round(np.exp(ln_ptau181), 2),
         "ab42": np.round(ab42, 1),
@@ -104,7 +120,8 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
 
 
 MISSING_RATES = {
-    "education_years": 0.05, "bmi": 0.05, "triglycerides": 0.10, "ptau181": 0.10,
+    "education_years": 0.05, "bmi": 0.05, "triglycerides": 0.10, "hemoglobin": 0.05, "glucose": 0.08,
+    "ldl": 0.15, "hdl": 0.15, "ptau181": 0.10,
     "gfap": 0.08, "nfl": 0.08, "apoe4": 0.30, "moca": 0.05, "mta_score": 0.15, "fazekas": 0.15,
 }
 
@@ -186,7 +203,16 @@ CALIBRATION_TARGETS = {
     "ptau217_increase_per_10_egfr": (0.12, "+12% Lumipulse p-tau217 per 10 mL/min lower eGFR (Mayo Clinic data)"),
     "age_variance_nfl": (0.26, "age explains 26% of plasma NfL variance (memory-clinic study)"),
     "age_variance_gfap": (0.12, "age explains 12% of plasma GFAP variance (same study)"),
+    "ptau217_ratio_anemia": (1.40, "optimal p-tau217 cut-off with anaemia 0.595 vs 0.425 pg/mL (JAMA Neurol 2026, n=2571)"),
 }
+
+
+def _anemia_ratio(pop: pd.DataFrame, y) -> float:
+    """Median p-tau217 of anaemic vs non-anaemic amyloid-negative patients."""
+    female = pop["sex"] == "F"
+    anemic = np.where(female, pop["hemoglobin"] < 12, pop["hemoglobin"] < 13)
+    neg = np.asarray(y) == 0
+    return float(pop["ptau217"][neg & anemic].median() / pop["ptau217"][neg & ~anemic].median())
 
 
 def calibration_report(n: int = 30000, seed: int = 0, lower: float = 0.14, upper: float = 0.43) -> pd.DataFrame:
@@ -204,6 +230,7 @@ def calibration_report(n: int = 30000, seed: int = 0, lower: float = 0.14, upper
         "ptau217_increase_per_10_egfr": float(np.exp(10 * EGFR_PTAU) - 1),
         "age_variance_nfl": float(np.corrcoef(pop["age"], np.log(pop["nfl"]))[0, 1] ** 2),
         "age_variance_gfap": float(np.corrcoef(pop["age"], np.log(pop["gfap"]))[0, 1] ** 2),
+        "ptau217_ratio_anemia": _anemia_ratio(pop, y),
     }
     return pd.DataFrame([{"quantity": k, "published": CALIBRATION_TARGETS[k][0], "simulated": round(v, 3),
                           "source": CALIBRATION_TARGETS[k][1]} for k, v in simulated.items()])

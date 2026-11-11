@@ -87,6 +87,21 @@ def write_dataset_card(path: Path, data_file: Path, df: pd.DataFrame, cfg: dict)
         "(two-cut-off approach; Lumipulse cut-offs 0.22 / 0.34 pg/mL).",
         "6. Plasma p-tau217 for Alzheimer's disease diagnosis: a memory clinic implementation approach. "
         "*Alzheimer's & Dementia: DADM* 2026. https://doi.org/10.1002/dad2.70286 (cut-offs 0.096 / 0.319 pg/mL).",
+        "7. Plasma phosphorylated tau 217 cutoffs for amyloid pathology and kidney function, body mass index, and "
+        "anemia. *JAMA Neurology* 2026 (n = 2,571, amyloid PET). https://jamanetwork.com/journals/jamaneurology/"
+        "fullarticle/2844557 (optimal p-tau217 cut-off 0.595 with anaemia vs 0.425 reference; kidney dysfunction "
+        "and anaemia act independently; obesity effect modest; WHO anaemia: Hb < 12 g/dL women, < 13 g/dL men).",
+        "8. Confounding factors to Alzheimer's disease plasma biomarkers in patients from a memory-clinic cohort. "
+        "*Alzheimer's & Dementia* 2024. https://alz-journals.onlinelibrary.wiley.com/doi/10.1002/alz.094091 "
+        "(creatinine, kidney disease and BMI are the main confounders of p-tau217, NfL and GFAP).",
+        "9. Evaluation of plasma p-tau217 for detecting amyloid pathology in a heterogeneous community-based cohort. "
+        "*Alzheimer's & Dementia* 2025. https://alz-journals.onlinelibrary.wiley.com/doi/10.1002/alz.70426 "
+        "(p-tau217-amyloid relationship unchanged by diabetes or hypertension; higher p-tau217 with hypertension "
+        "in amyloid-negative people, exploratory).",
+        "10. The performance of plasma p-tau217 in Black middle-aged and older adults. *Alzheimer's & Dementia* 2025. "
+        "https://alz-journals.onlinelibrary.wiley.com/doi/full/10.1002/alz.70288 (diabetes not related to p-tau217).",
+        "11. Enhancing diagnostic precision in Alzheimer's disease: impact of comorbidities on blood biomarkers. "
+        "https://zenodo.org/records/17814411 (plasma biomarkers associated with eGFR, homocysteine and HDL).",
         "",
         "The values above were taken from abstracts/search summaries of these papers (the full texts could not be "
         "opened from the build environment). Check them in the original articles before citing.",
@@ -98,6 +113,11 @@ def write_dataset_card(path: Path, data_file: Path, df: pd.DataFrame, cfg: dict)
         "NfL (~14-20 pg/mL), p-tau181; BMI, triglyceride and eGFR distributions; the effect sizes of BMI and "
         "triglycerides on p-tau217 (direction from the literature, size assumed).",
         "- MoCA, MTA and Fazekas models; the missing-data rates per variable.",
+        "- Blood panel: haemoglobin (women 13.4, men 14.6 g/dL, lower with CKD and age; ~17% anaemic), fasting "
+        "glucose (~20% diabetes), LDL and HDL distributions. Glucose, LDL and HDL have NO effect on p-tau217 in the "
+        "simulation (evidence is mixed/null); they only act through vascular damage (Fazekas) and diabetes on MoCA. "
+        "Anaemia raises p-tau217 by 25% directly; with its link to age and kidney function, the observed difference "
+        "matches the published 1.40 cut-off ratio.",
         "- The simulation is cleaner than reality, so the model performs better on it than it will on real data.",
         "",
         "## Real datasets with these variables (access on application)",

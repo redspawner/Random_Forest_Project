@@ -206,6 +206,15 @@ def parse_label(value: Any) -> float:
 # ---------------------------------------------------------------------------
 # Derived variables
 # ---------------------------------------------------------------------------
+def anemia_who(hemoglobin_g_dl, is_female):
+    """WHO anaemia definition: haemoglobin < 12 g/dL (women) or < 13 g/dL (men). NaN if unknown."""
+    hb = np.asarray(hemoglobin_g_dl, dtype=float)
+    female = np.asarray(is_female, dtype=float)
+    out = np.where(female == 1, hb < 12.0, hb < 13.0).astype(float)
+    out[np.isnan(hb) | np.isnan(female)] = np.nan
+    return out
+
+
 def ckd_epi_2021(creatinine_mg_dl, age, is_female):
     """2021 CKD-EPI creatinine equation (race-free), mL/min/1.73 m²."""
     scr = np.asarray(creatinine_mg_dl, dtype=float)
@@ -319,7 +328,10 @@ def prepare_table(df: pd.DataFrame, cfg: dict, require_label: bool = False) -> P
         if spec.compute is None:
             continue
         target = table[spec.name].to_numpy(dtype=float).copy()
-        if spec.compute == "ckd_epi_2021":
+        if spec.compute == "anemia_who":
+            computed = anemia_who(table["hemoglobin"], table["sex"])
+            note = None
+        elif spec.compute == "ckd_epi_2021":
             computed = ckd_epi_2021(table["creatinine"], table["age"], table["sex"])
             computed[table["sex"].isna().to_numpy() | table["age"].isna().to_numpy()] = np.nan
             note = "eGFR computed from creatinine (CKD-EPI 2021)"

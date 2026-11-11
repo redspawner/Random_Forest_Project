@@ -1,12 +1,12 @@
 {
-  "trained": "2026-11-11T15:29:24",
+  "trained": "2026-11-11T16:28:57",
   "training_file": "data/default_training/synthetic_training_dataset.xlsx",
-  "training_file_sha256": "fefe0a6e7bc5f4fde8f55e01f4085db5a656cb3380c34c2b22814e2a73665e59",
+  "training_file_sha256": "2f971167105fd38bfbcc98f272ce31557ade4f79288ec488ce04d2b2a9a18ac7",
   "rows_in_file": 600,
   "training_patients": 600,
   "thresholds": {
-    "positive": 0.76,
-    "negative": 0.2
+    "positive": 0.78,
+    "negative": 0.25
   },
   "features": [
     "age",
@@ -15,6 +15,11 @@
     "bmi",
     "egfr",
     "triglycerides",
+    "hemoglobin",
+    "anemia",
+    "glucose",
+    "ldl",
+    "hdl",
     "ptau217",
     "ptau181",
     "ab42",
@@ -34,5 +39,5 @@
     "numpy": "2.5.4",
     "pandas": "3.1.1"
   },
-  "written": "2026-11-11T15:29:25"
+  "written": "2026-11-11T16:28:58"
 }
