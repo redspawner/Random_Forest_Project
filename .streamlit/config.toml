@@ -3,7 +3,7 @@
 gatherUsageStats = false     # no telemetry
 
 [server]
-address = "localhost"        # only reachable from this computer
+address = "127.0.0.1"        # only reachable from this computer (run_app.py also sets it)
 port = 8501
 maxUploadSize = 50           # MB
 headless = true              # run_app.py opens the browser itself

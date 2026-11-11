@@ -38,19 +38,27 @@ jobs:
         working-directory: dist/GreyZoneTriage/app
         run: ..\python\python.exe train.py examples\example_1_training_file.xlsx --out $env:RUNNER_TEMP\model --no-nested
 
-      - name: Test - the app starts and answers
+      - name: Test - the launcher (as START_APP.bat) starts the app and reports it ready
         working-directory: dist/GreyZoneTriage/app
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath ..\python\python.exe -ArgumentList "-m","streamlit","run","app.py","--server.headless","true" -PassThru
+          $log = "$env:RUNNER_TEMP\launcher.log"
+          $p = Start-Process -FilePath ..\python\python.exe -ArgumentList "-u","run_app.py","--no-browser" -RedirectStandardOutput $log -RedirectStandardError "$log.err" -PassThru
           $ok = $false
-          for ($i = 0; $i -lt 60; $i++) {
+          for ($i = 0; $i -lt 90; $i++) {
             Start-Sleep -Seconds 2
-            try { if ((Invoke-WebRequest -UseBasicParsing http://localhost:8501/_stcore/health).Content -match "ok") { $ok = $true; break } } catch {}
+            if ((Test-Path $log) -and (Select-String -Path $log -Pattern "The app is ready" -Quiet)) { $ok = $true; break }
           }
-          Stop-Process -Id $p.Id -Force
-          if (-not $ok) { throw "Streamlit did not start" }
-          "app OK"
+          Get-Content $log
+          if ($ok) {
+            $url = (Select-String -Path $log -Pattern "http://127\.0\.0\.1:\d+").Matches[0].Value
+            $health = (Invoke-WebRequest -UseBasicParsing "$url/_stcore/health").Content
+            "health: $health"
+          }
+          Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match "streamlit" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { Get-Content "$log.err"; throw "The app did not become ready" }
+          if ($health -notmatch "ok") { throw "Health check failed" }
 
       - name: Upload the zip
         uses: actions/upload-artifact@v4
