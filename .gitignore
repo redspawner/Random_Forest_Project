@@ -8,11 +8,14 @@ venv/
 # Trained models (re-create with train.py or the app)
 models/*
 !models/.gitkeep
+# ...except the shipped default model
+!models/default/
 
 # PATIENT DATA MUST NEVER BE COMMITTED.
 # Only the synthetic demo files and the template are tracked.
 data/*
 !data/synthetic/
+!data/default_training/
 !data/README.md
 *_results.xlsx
 *_with_predictions.xlsx
@@ -24,3 +27,5 @@ Thumbs.db
 .idea/
 .vscode/
 ~$*.xlsx
+# example files are tracked even when they look like outputs
+!examples/*.xlsx

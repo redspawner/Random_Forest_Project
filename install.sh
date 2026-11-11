@@ -6,6 +6,5 @@ python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python make_demo_data.py
-.venv/bin/python train.py data/synthetic/synthetic_training_cohort.xlsx   # demo model
 echo
 echo "Installation finished. Start the app with:  ./run_app.sh"

@@ -1,6 +1,7 @@
 """Train the grey-zone Random Forest from an Excel/CSV file with LP results.
 
-    python train.py data/synthetic/synthetic_training_cohort.xlsx
+    python train.py --default                      # re-train the shipped default model
+    python train.py data/default_training/synthetic_training_dataset.xlsx --out models/my_model
     python train.py my_cohort.xlsx --out models/rf_2026_11 --no-nested
 
 The model and its report are written to the output folder (default: models/rf_model):
@@ -24,7 +25,10 @@ DEFAULT_OUT = PROJECT_ROOT / "models" / "rf_model"
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("file", help="training file (.xlsx or .csv) with the lp_result column")
+    parser.add_argument("file", nargs="?", help="training file (.xlsx or .csv) with the lp_result column")
+    parser.add_argument("--default", action="store_true",
+                        help="(re)train the shipped default model from the dataset in config.yaml "
+                             "(default_model.training_file) into default_model.model_dir")
     parser.add_argument("--out", default=str(DEFAULT_OUT), help="output folder (default models/rf_model)")
     parser.add_argument("--config", default=None, help="alternative config.yaml")
     nested = parser.add_mutually_exclusive_group()
@@ -34,6 +38,16 @@ def main() -> int:
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    if args.default:
+        from greyzone_rf.default_model import train_default
+
+        print("Training the DEFAULT model from", cfg["default_model"]["training_file"], "...")
+        bundle = train_default(cfg, nested=args.nested)
+        print(markdown_report(bundle))
+        print(f"\nDefault model saved to {cfg['default_model']['model_dir']} (with manifest.json).")
+        return 0
+    if not args.file:
+        parser.error("give a training file, or use --default")
     try:
         prepared = load_patient_file(args.file, cfg, require_label=True)
     except DataError as exc:

@@ -23,9 +23,10 @@ from .data import ckd_epi_2021
 
 
 # Effect sizes of the simulation (log scale for p-tau217 / GFAP).
-PTAU_BASE, PTAU_AMY, PTAU_BURDEN, PTAU_SD = 0.10, 1.25, 0.35, 0.55
-RATIO_AMY, RATIO_SD = 0.008, 0.008
+PTAU_BASE, PTAU_AMY, PTAU_BURDEN, PTAU_SD = 0.10, 1.25, 0.35, 0.62
+RATIO_AMY, RATIO_SD = 0.008, 0.0095
 GFAP_AMY, COG_AMY, MTA_AMY = 0.30, 0.8, 0.5
+EGFR_PTAU = np.log(1.12) / 10     # +12% p-tau217 per 10 mL/min lower eGFR (Lumipulse, Mayo data)
 
 
 def _sigmoid(x):
@@ -60,20 +61,20 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
     renal = 85 - egfr
     ptau_noise = rng.normal(0, PTAU_SD, n)   # biological + analytical variation shared by p-tau isoforms
     ln_ptau217 = (np.log(PTAU_BASE) + PTAU_AMY * amyloid + PTAU_BURDEN * burden + 0.010 * (age - 71)
-                  + 0.012 * renal - 0.030 * (bmi - 26.5) - 0.15 * np.log(tg / 125)
+                  + EGFR_PTAU * renal - 0.030 * (bmi - 26.5) - 0.15 * np.log(tg / 125)
                   + ptau_noise)
     ln_ptau181 = (np.log(1.3) + 0.30 * amyloid + 0.15 * burden + 0.008 * renal
                   + 0.6 * ptau_noise + rng.normal(0, 0.35, n))
     ab40 = np.clip(rng.normal(300 + 1.2 * renal, 45, n), 120, 700)
     ratio = np.clip(0.102 - RATIO_AMY * amyloid - 0.003 * burden + rng.normal(0, RATIO_SD, n), 0.04, 0.16)
     ab42 = ratio * ab40
-    ln_gfap = (np.log(115) + GFAP_AMY * amyloid + 0.10 * burden + 0.015 * (age - 71)
+    ln_gfap = (np.log(115) + GFAP_AMY * amyloid + 0.10 * burden + 0.012 * (age - 71)
                + 0.006 * renal * (1 - 0.5 * female) + rng.normal(0, 0.35, n))
-    ln_nfl = (np.log(14) + 0.12 * amyloid + 0.028 * (age - 71) + 0.010 * renal
+    ln_nfl = (np.log(14) + 0.12 * amyloid + 0.021 * (age - 71) + 0.010 * renal
               - 0.010 * (bmi - 26.5) + 0.35 * non_ad + rng.normal(0, 0.30, n))
 
     impairment = amyloid * np.clip(burden + 0.3, 0, None) * COG_AMY + 0.5 * non_ad
-    moca = np.clip(np.round(27.5 + 0.18 * (education - 8) - 0.06 * (age - 71)
+    moca = np.clip(np.round(26.5 + 0.18 * (education - 8) - 0.06 * (age - 71)
                             - 2.6 * impairment + rng.normal(0, 2.0, n)), 0, 30)
     mta = np.clip(np.round(0.8 + 0.06 * (age - 71) + MTA_AMY * amyloid * (burden + 0.4)
                            + 0.3 * non_ad + rng.normal(0, 0.6, n)), 0, 4)
@@ -172,3 +173,37 @@ def population_check(n: int = 20000, seed: int = 0, lower: float = 0.14, upper: 
         "above_upper_ppv": float(pos[pop["ptau217"] > upper].mean()),
         "max_egfr_inversion_error": float(np.max(np.abs(egfr_check - pop["egfr"]))),
     }
+
+
+# ---------------------------------------------------------------------------
+# Literature targets used to calibrate the generator (see data/default_training/DATASET_CARD.md)
+# ---------------------------------------------------------------------------
+CALIBRATION_TARGETS = {
+    "auc_ptau217": (0.95, "Lumipulse plasma p-tau217 vs CSF, memory clinic (Alzheimer's Res Ther 2025)"),
+    "auc_ptau217_ab42": (0.97, "p-tau217/Abeta42 ratio, same study"),
+    "auc_ab42_ab40": (0.72, "plasma Abeta42/40, same study (0.85 vs CSF in a Japanese memory-clinic study)"),
+    "grey_zone_fraction": (0.30, "intermediate zone 15-30% with two cut-offs (several Lumipulse studies)"),
+    "ptau217_increase_per_10_egfr": (0.12, "+12% Lumipulse p-tau217 per 10 mL/min lower eGFR (Mayo Clinic data)"),
+    "age_variance_nfl": (0.26, "age explains 26% of plasma NfL variance (memory-clinic study)"),
+    "age_variance_gfap": (0.12, "age explains 12% of plasma GFAP variance (same study)"),
+}
+
+
+def calibration_report(n: int = 30000, seed: int = 0, lower: float = 0.14, upper: float = 0.43) -> pd.DataFrame:
+    """Compare the simulated population with the literature targets."""
+    from sklearn.metrics import roc_auc_score
+
+    pop = simulate_memory_clinic(n, seed)
+    y = (pop["lp_result"] == "Positive").astype(int)
+    ratio = pop["ab42"] / pop["ab40"]
+    simulated = {
+        "auc_ptau217": roc_auc_score(y, pop["ptau217"]),
+        "auc_ptau217_ab42": roc_auc_score(y, pop["ptau217"] / pop["ab42"]),
+        "auc_ab42_ab40": roc_auc_score(y, -ratio),
+        "grey_zone_fraction": float(((pop["ptau217"] >= lower) & (pop["ptau217"] <= upper)).mean()),
+        "ptau217_increase_per_10_egfr": float(np.exp(10 * EGFR_PTAU) - 1),
+        "age_variance_nfl": float(np.corrcoef(pop["age"], np.log(pop["nfl"]))[0, 1] ** 2),
+        "age_variance_gfap": float(np.corrcoef(pop["age"], np.log(pop["gfap"]))[0, 1] ** 2),
+    }
+    return pd.DataFrame([{"quantity": k, "published": CALIBRATION_TARGETS[k][0], "simulated": round(v, 3),
+                          "source": CALIBRATION_TARGETS[k][1]} for k, v in simulated.items()])

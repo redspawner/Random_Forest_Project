@@ -1,7 +1,7 @@
 """Classify new grey-zone patients with a trained model (command-line version of the app).
 
     python predict.py data/synthetic/synthetic_new_patients.xlsx
-    python predict.py new_patients.xlsx --model models/rf_model --out results.xlsx
+    python predict.py new_patients.xlsx --model models/my_model --out results.xlsx
 """
 
 from __future__ import annotations
@@ -19,7 +19,8 @@ from greyzone_rf.predict import DISCLAIMER, annotated_original, predict_prepared
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("file", help="patients file (.xlsx or .csv)")
-    parser.add_argument("--model", default=str(PROJECT_ROOT / "models" / "rf_model"), help="model folder or file")
+    parser.add_argument("--model", default=str(PROJECT_ROOT / "models" / "default"),
+                        help="model folder or file (default: the shipped default model)")
     parser.add_argument("--out", default=None, help="results file (default: <input>_results.xlsx)")
     args = parser.parse_args()
 

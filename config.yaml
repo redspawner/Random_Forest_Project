@@ -20,6 +20,17 @@ columns:
   patient_id_aliases: [id, patient, patientid, doente, id_doente, processo, record_id]
   label_aliases: [lp, csf_result, pl_result, puncao_lombar, label, diagnosis, csf]
 
+default_model:
+  # The dataset the shipped ("out of the box") model is trained on, kept as a file in the
+  # repository so it is always known which data produced the model. To ship a model trained
+  # on real data: replace this path, run  python train.py --default  and commit models/default/
+  # (read "Shipping a pre-trained model" in the README first - patient-data rules apply).
+  training_file: data/default_training/synthetic_training_dataset.xlsx
+  model_dir: models/default
+  # If the shipped model is missing or cannot be loaded (e.g. other scikit-learn version),
+  # the app re-trains it automatically from training_file (same seed -> same model).
+  auto_train_if_missing: true
+
 grey_zone:
   # Stage-1 plasma p-tau217 cut-offs (pg/mL) already used at the centre.
   #   p-tau217 <  lower  -> Stage-1 NEGATIVE  (model not applied)

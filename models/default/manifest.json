@@ -1,0 +1,38 @@
+{
+  "trained": "2026-11-11T15:29:24",
+  "training_file": "data/default_training/synthetic_training_dataset.xlsx",
+  "training_file_sha256": "fefe0a6e7bc5f4fde8f55e01f4085db5a656cb3380c34c2b22814e2a73665e59",
+  "rows_in_file": 600,
+  "training_patients": 600,
+  "thresholds": {
+    "positive": 0.76,
+    "negative": 0.2
+  },
+  "features": [
+    "age",
+    "sex",
+    "education_years",
+    "bmi",
+    "egfr",
+    "triglycerides",
+    "ptau217",
+    "ptau181",
+    "ab42",
+    "ab40",
+    "ab42_ab40_ratio",
+    "ptau217_ab42_ratio",
+    "gfap",
+    "nfl",
+    "apoe4",
+    "moca",
+    "mta_score",
+    "fazekas"
+  ],
+  "versions": {
+    "python": "3.13.18",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.1.1"
+  },
+  "written": "2026-11-11T15:29:25"
+}
