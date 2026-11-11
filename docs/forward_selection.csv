@@ -1,0 +1,16 @@
+step,added,n_variables,auc,resolved_%,errors
+0,ptau217,1,0.7072,0.0,0
+1,clinical_stage,2,0.8156,0.0,0
+2,ab42_ab40_ratio,3,0.8538,0.0,0
+3,apoe4,4,0.8691,0.0,0
+4,stroke,5,0.8751,0.0,0
+5,egfr,6,0.88,0.0,0
+6,triglycerides,7,0.8848,0.0,0
+7,hypertension,8,0.8899,0.0,0
+8,anemia,9,0.8907,0.0,0
+9,mta_score,10,0.8916,10.0,0
+10,cardiovascular_disease,11,0.8956,0.0,0
+11,sleep_apnea,12,0.8958,0.0,0
+12,diabetes,13,0.8964,0.0,0
+13,weight_loss,14,0.8947,0.0,0
+14,hdl,15,0.896,0.0,0

@@ -271,6 +271,41 @@ range seen in training".
   - The rule-in side is at the limit of what about 500 patients can prove. See
     `docs/VARIABLE_ANALYSIS.md`.
 
+## Step 12d - Hybrid dataset from real public data, and a compact model
+
+- **Real data used** (only GitHub/Rdatasets mirrors were reachable; NHANES, PubMed Central and
+  publisher sites were blocked):
+  - the **Cardiovascular Health Study MRI sub-study** (735 adults aged 65+): age, sex, BMI,
+    creatinine, LDL, diabetes, stroke, heart disease, systolic BP;
+  - **Knight ADRC** CSF study (n = 333): APOE genotype frequencies.
+- **How it is used:**
+  - Real CHS participants are resampled with small jitter, so the clinical covariates keep their
+    real correlations.
+  - Amyloid status, plasma p-tau217 and Aβ42/40, haemoglobin, triglycerides, hypertension and
+    clinical stage are simulated on top, still calibrated to the published values.
+- **Your decisions:**
+  - p-tau181 and GFAP removed, because they will not be measured.
+  - Aβ42/Aβ40 always measured (part of the work-up).
+  - APOE kept.
+  - 600 patients, because 2,500 is not realistic.
+- **Forward selection:** starting from p-tau217, the variable that adds the most AUC is added at
+  each step (table in README §4).
+  - The AUC plateaus after about 8–10 variables.
+  - **Compact 10** is used: p-tau217, clinical stage, Aβ42/40, p-tau217/Aβ42, APOE, stroke,
+    eGFR, triglycerides, hypertension, anaemia.
+  - Its AUC equals that of all 23 variables (0.895 vs 0.890). The template shrank to 15 columns.
+- **Result - the most important finding of the project so far:**
+  - With realistic variables, the model reaches AUC ≈ 0.89 in the grey zone, against 0.75 for
+    p-tau217 alone.
+  - But with **600 patients no 95 % threshold can be certified**. The default model refers
+    everyone to LP.
+  - Simulations needed about 1,500–2,500 grey-zone patients before rule-out (NEGATIVE) calls
+    could be certified, sparing 22–31 % of LPs.
+  - Rule-in (POSITIVE) was never certified, even with 2,500.
+  - In the thesis this is a result, not a failure. It quantifies how much evidence a 95 %
+    guarantee requires. It argues for pooled cohorts, an extra independent marker, or an
+    explicitly lower target.
+
 ## Step 13 - Sample-size experiments
 
 I trained the procedure on synthetic cohorts of different sizes, then checked the chosen

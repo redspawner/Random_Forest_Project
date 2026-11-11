@@ -50,7 +50,7 @@ def test_prepare_table_checks_and_derivations(cfg):
         "ab42": [30, 25, 28, 27],
         "ab40": [300, 310, 290, 305],
         "creatinine": [None, 1.0, None, None],
-        "MoCA": [25, 34, 22, 20],
+        "Hemoglobina (g/dL)": [13, 45, 12, 14],
         "homocysteine": [10, 11, 12, 13],
         "lp_result": ["Positive", "Negative", "Positive", "Negative"],
     })
@@ -60,8 +60,8 @@ def test_prepare_table_checks_and_derivations(cfg):
     assert np.isclose(p.table.loc[0, "ab42_ab40_ratio"], 0.1)
     assert np.isclose(p.table.loc[0, "ptau217_ab42_ratio"], 0.2 / 30)
     assert 70 < p.table.loc[1, "egfr"] < 90                    # computed from creatinine
-    assert any("moca" in s for s in p.row_issues[1])             # MoCA 34 is implausible
-    assert np.isnan(p.table.loc[1, "moca"])
+    assert any("hemoglobin" in s for s in p.row_issues[1])       # Hb 45 g/dL is implausible
+    assert np.isnan(p.table.loc[1, "hemoglobin"])
     assert any("ptau217 missing" in s for s in p.row_issues[2])
     assert any("sex" in s for s in p.row_issues[3])
     assert "homocysteine" in p.unrecognized_columns
@@ -92,7 +92,7 @@ def test_template_round_trip(cfg):
     p = prepare_table(df, cfg, require_label=True)     # the example row must be valid
     assert p.n == 1 and not p.row_issues[0]
     assert p.labels[0] == 1
-    assert set(p.columns_found) >= {"age", "sex", "ptau217", "egfr", "moca"}
+    assert set(p.columns_found) >= {"age", "sex", "ptau217", "egfr", "clinical_stage", "ab42", "ab40"}
 
 
 def test_grey_zone(cfg):
@@ -109,8 +109,8 @@ def test_anemia_computed_from_hemoglobin_and_sex(cfg):
 
 def test_clinical_stage_and_yes_no_parsing(cfg):
     df = pd.DataFrame({"ptau217": [0.2] * 4, "clinical_stage": ["SCD", "DCL", "Demência", "MCI"],
-                       "HTA": ["sim", "não", 1, 0], "SAOS": ["yes", "no", None, "1"]})
+                       "HTA": ["sim", "não", 1, 0], "AVC": ["yes", "no", None, "1"]})
     p = prepare_table(df, cfg)
     assert list(p.table["clinical_stage"]) == [0, 1, 2, 1]
     assert list(p.table["hypertension"]) == [1, 0, 1, 0]
-    assert p.table["sleep_apnea"].tolist()[:2] == [1, 0] and np.isnan(p.table["sleep_apnea"][2])
+    assert p.table["stroke"].tolist()[:2] == [1, 0] and np.isnan(p.table["stroke"][2])

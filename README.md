@@ -137,17 +137,29 @@ default_model:
 - `tests/test_default_model.py` checks that the shipped model, its manifest, the dataset file and
   the dataset card all agree.
 
-### Where the synthetic data come from
+### Where the data come from (hybrid: real clinical data + simulated biomarkers)
 
-No open dataset contains all of this project's variables at individual-patient level. The best
-real candidate is **ADNI** (adni.loni.usc.edu). Its plasma dataset has Lumipulse p-tau217, Aβ42,
-Aβ40, NfL and GFAP, alongside CSF and PET amyloid, MRI, MoCA, APOE and creatinine for a subset. It is
-free for researchers, but only after a data-use agreement. The default dataset is therefore **synthetic**.
-It is generated from a causal model whose parameters were tuned to reproduce published values:
-Lumipulse p-tau217 AUC 0.95 vs CSF, p-tau217/Aβ42 AUC 0.97, Aβ42/40 AUC 0.72–0.85, grey-zone
-fraction ~15–30 %, +12 % p-tau217 per 10 mL/min lower eGFR, and age explaining 26 % of NfL and 12 % of
-GFAP variance. `DATASET_CARD.md` lists every source, every simulated vs published value, and every
-parameter that is an assumption rather than a published number.
+No accessible public dataset contains plasma p-tau217 with an LP result and routine clinical data
+for individual patients. ADNI comes closest, but only after a data-use agreement. The default
+dataset is therefore a **hybrid**:
+
+- **Real (Cardiovascular Health Study, MRI sub-study; 735 adults aged 65+; public file in
+  `data/external/`):** age, sex, BMI, creatinine → eGFR, LDL, diabetes, stroke, heart disease and
+  systolic BP. These come from real participants (resampled with small jitter), so their
+  correlations are real.
+- **Real frequencies (Knight ADRC CSF study, n = 333):** APOE ε4.
+- **Simulated, conditional on the above:**
+  - the amyloid/LP label;
+  - plasma p-tau217 and Aβ42/40;
+  - haemoglobin, triglycerides, hypertension, clinical stage.
+
+  The parameters are tuned to published values: Lumipulse p-tau217 AUC 0.95 vs CSF;
+  p-tau217/Aβ42 AUC 0.97; Aβ42/40 AUC 0.72–0.85; grey zone ~15–30 %; +12 % p-tau217 per
+  10 mL/min lower eGFR; anaemia cut-off ratio 1.40.
+
+The data sources reachable from the build environment were GitHub/Rdatasets mirrors only. CDC
+NHANES, PubMed Central and publisher sites were blocked. `DATASET_CARD.md` lists every source,
+every simulated vs published value, and every assumption.
 
 ### Shipping a model trained on real data
 
@@ -170,39 +182,33 @@ parameter that is an assumption rather than a published number.
 Download `templates/patient_data_template.xlsx` (or use the button in the app). Each patient goes on one row of the sheet
 **Patients**:
 
-| column | unit | notes |
-|---|---|---|
-| `patient_id` | text | pseudonymised ID only |
-| `age` | years | |
-| `sex` | M / F | |
-| `education_years` | years | |
-| `bmi` | kg/m² | |
-| `egfr` | mL/min/1.73 m² | if blank, computed from `creatinine` (CKD-EPI 2021) |
-| `creatinine` | mg/dL | only used to compute eGFR |
-| `triglycerides` | mg/dL | |
-| `hemoglobin` | g/dL | complete blood count; `anemia` (WHO: < 12 women, < 13 men) is computed from it |
-| `glucose` | mg/dL | fasting glucose (diabetes) |
-| `ldl`, `hdl` | mg/dL | cholesterol fractions (vascular risk) |
-| `ptau217` | pg/mL | **required**; defines the grey zone |
-| `ptau181`, `ab42`, `ab40`, `gfap`, `nfl` | pg/mL | |
-| `ab42_ab40_ratio` | ratio | if blank, computed from ab42/ab40 (`ptau217/ab42` is also computed) |
-| `apoe4` | 0/1/2 or `E3/E4` | number of ε4 alleles |
-| `moca` | 0–30 | |
-| `mta_score` | 0–4 | Scheltens MTA, worse side |
-| `fazekas` | 0–3 | read, but not used by the model (see below) |
-| `systolic_bp`, `diastolic_bp`, `heart_rate` | mmHg, bpm | vital signs from the visit (read, not used by the model) |
-| `hypertension`, `diabetes` | yes/no | known diagnosis **or** on medication |
-| `stroke`, `cardiovascular_disease`, `sleep_apnea`, `weight_loss` | yes/no | stroke/TIA; MI/coronary disease/heart failure; known OSA; recent unintentional weight loss |
-| `clinical_stage` | SCD / MCI / Dementia | Portuguese also accepted (DCL, Demência) |
-| `atypical_features` | yes/no | **red flag**: rapid progression, motor-neuron disease, prion suspicion, prominent parkinsonism, frontotemporal syndrome or possible NPH. If yes, the model is not applied (INCONCLUSIVE → LP/PET) |
-| `lp_result` | Positive / Negative | **training file only** (leave blank or delete for new patients) |
+Only **15 columns** (plus the LP result for training). The model uses **10 variables**; the other
+columns are inputs from which a model variable is computed.
+
+| column | unit | used as | notes |
+|---|---|---|---|
+| `patient_id` | text | identifier | pseudonymised ID only |
+| `age`, `sex` | years, M/F | input | needed to compute eGFR and anaemia |
+| `egfr` | mL/min/1.73 m² | **model** | if blank, computed from `creatinine` (CKD-EPI 2021) |
+| `creatinine` | mg/dL | input | only to compute eGFR |
+| `triglycerides` | mg/dL | **model** | routine lipid panel |
+| `hemoglobin` | g/dL | input | the model uses `anemia` (WHO: < 12 women, < 13 men), computed from it |
+| `ptau217` | pg/mL | **model** | **required**; defines the grey zone |
+| `ab42`, `ab40` | pg/mL | input | plasma Lumipulse, same tube; give the **Aβ42/40** and **p-tau217/Aβ42** ratios (both **model**) |
+| `ab42_ab40_ratio` | ratio | **model** | optional if ab42/ab40 are given |
+| `apoe4` | 0/1/2 or `E3/E4` | **model** | number of ε4 alleles |
+| `hypertension` | yes/no | **model** | known diagnosis **or** on antihypertensive medication |
+| `stroke` | yes/no | **model** | history of stroke/TIA |
+| `clinical_stage` | SCD / MCI / Dementia | **model** | Portuguese also accepted (DCS, DCL, Demência) |
+| `atypical_features` | yes/no | **red flag** | rapid progression, motor-neuron disease, prion suspicion, prominent parkinsonism, frontotemporal syndrome or possible NPH. If yes, the model is not applied (INCONCLUSIVE → LP/PET) |
+| `lp_result` | Positive / Negative | label | **training file only** (leave blank or delete for new patients) |
 
 The reader is forgiving and records every correction in the output:
 
 - Header case does not matter, and units in brackets are ignored. Aliases are accepted (`p-Tau217 (pg/mL)`, `Idade`, `Sexo`, `IMC`, …).
 - Decimal commas are accepted (`0,25`). Censored values such as `<0.03` are used as 0.03 and noted.
 - A blank cell is a missing value. The Random Forest handles missing values natively (scikit-learn ≥ 1.4), without imputation.
-- Implausible values (e.g. MoCA = 34, eGFR = 900) are **never silently changed**. When classifying, that patient gets **CHECK DATA** and is not classified. During training, the value is treated as missing and a warning is shown.
+- Implausible values (e.g. haemoglobin = 45 g/dL, eGFR = 900) are **never silently changed**. When classifying, that patient gets **CHECK DATA** and is not classified. During training, the value is treated as missing and a warning is shown.
 - Patients with p-tau217 outside the grey zone get **NOT APPLICABLE**, together with their Stage-1 result. The model was trained only on grey-zone patients, so it must not extrapolate.
 - Patients missing more than 50 % of the model variables stay **INCONCLUSIVE**.
 - Patients with a **red flag** (`decision.red_flags` in `config.yaml`, by default `atypical_features`) stay **INCONCLUSIVE**. This follows the guidance that atypical presentations need CSF/PET confirmation whatever the plasma result.
@@ -212,18 +218,35 @@ The reader is forgiving and records every correction in the output:
 **Adding a new variable** (e.g. homocysteine) needs no code. Add a block under `features:` in
 `config.yaml` (name, unit, plausible min/max), add the column to the Excel file, and retrain.
 
-### Which variables the model uses (and why some were removed)
+### Which variables the model uses, and how they were chosen
 
-Thirty-three candidate variables were tested with a leave-one-variable-out analysis
-(`python analyze_variables.py <training file>`). Each variable is removed in turn, the same
-cross-validation is re-run, and the change in AUC and in lumbar punctures avoided is compared
-with the run-to-run noise. After deciding variable by variable, 8 are read but **not used by the
-model**: raw Aβ42, raw Aβ40, NfL, heart rate, systolic and diastolic BP, fasting glucose and
-Fazekas (`use_as_feature: false`). The model uses **25 variables**. The full table and the
-before/after results are in [`docs/VARIABLE_ANALYSIS.md`](docs/VARIABLE_ANALYSIS.md).
+1. **Removed on request:** p-tau181, GFAP and NfL are not measured in the future cohort.
+2. **Leave-one-variable-out analysis:** `python analyze_variables.py <training file>` removed
+   heart rate, blood pressures, glucose, Fazekas and the raw Aβ values, after decisions made one by one.
+3. **Forward selection** (`greyzone_rf/ablation.py`, `forward_selection`) on the hybrid dataset:
+   starting from p-tau217, the variable adding the most cross-validated AUC was added at each step.
 
-**Re-run the analysis on real data**: the synthetic data were built with some of these variables
-having no effect, so on synthetic data the analysis partly confirms the simulation.
+| step | added | AUC |
+|---|---|---|
+| 0 | p-tau217 | 0.707 |
+| 1 | clinical stage | 0.816 |
+| 2 | Aβ42/40 ratio | 0.854 |
+| 3 | APOE ε4 | 0.869 |
+| 4 | stroke | 0.875 |
+| 5 | eGFR | 0.880 |
+| 6 | triglycerides | 0.885 |
+| 7 | hypertension | 0.890 |
+| 8 | anaemia | 0.891 |
+| 9–14 | MTA, heart disease, sleep apnoea, diabetes, weight loss, HDL | 0.892–0.896 (plateau) |
+
+The chosen **compact 10** set has the same AUC as all 23 variables (0.895 vs 0.890). It is the
+first 8 steps, plus the p-tau217/Aβ42 ratio, which was kept on literature grounds. Education, BMI,
+LDL, HDL, diabetes, heart disease, sleep apnoea, weight loss, MoCA and MTA were dropped from the
+template. They can be re-added as blocks in `config.yaml`; their previous definitions are in the
+git history. Details are in [`docs/VARIABLE_ANALYSIS.md`](docs/VARIABLE_ANALYSIS.md).
+
+**Re-run both analyses on real data.** The synthetic data were built with some variables having
+little or no effect, so on synthetic data the analyses partly reflect the simulation.
 
 ### Why these blood-panel variables
 
@@ -234,8 +257,8 @@ are likely to be available from a recent analysis:
 |---|---|
 | Haemoglobin / anaemia | Anaemia raises plasma p-tau217 independently of kidney function. The optimal cut-off was 0.595 vs 0.425 pg/mL in 2,571 patients ([JAMA Neurology 2026](https://jamanetwork.com/journals/jamaneurology/fullarticle/2844557)). |
 | Creatinine / eGFR (already present) | The strongest peripheral confounder of p-tau217, NfL and GFAP. |
-| Fasting glucose | Diabetes and insulin resistance are frequent co-morbidities. Studies so far find **no** clear effect on the p-tau217–amyloid relation, but glucose marks vascular/metabolic causes of cognitive decline. |
-| LDL, HDL (triglycerides already present) | Vascular risk; HDL has been associated with plasma AD biomarkers. |
+| Triglycerides | Associated with lower plasma p-tau217 (lipid interference). Selected by the forward selection. |
+| (Glucose, LDL, HDL: tested, then dropped) | No clear effect on the p-tau217–amyloid relation in published studies, and no measurable contribution here. |
 
 Not added, because they are less routine or less supported: HbA1c (often only in known diabetics),
 homocysteine, CRP, albumin, liver enzymes, B12/folate/TSH (standard dementia work-up, but they
@@ -270,7 +293,8 @@ chosen thresholds are optimistic by construction. The training report therefore 
 **nested cross-validation**. The whole procedure (inner CV, threshold selection, final model) is
 repeated in 5 outer folds and applied to the held-out patients. This answers the questions that
 matter: *what fraction of grey-zone patients would avoid an LP, and how often would the tool be
-wrong?* For the default model (600 synthetic grey-zone patients):
+wrong?* For an earlier version of the default model (600 synthetic grey-zone patients, 25 variables
+including p-tau181 and GFAP; the current compact model certifies nothing at this size, see §6):
 
 | | in-sample (optimistic) | nested CV (honest) |
 |---|---|---|
@@ -296,7 +320,27 @@ chosen thresholds on 6,000 independent synthetic patients.
 | 500 | 21 – 41 % | ≥ 96 % in every run |
 | 1000 | 39 – 64 % | ≥ 96 % in every run |
 
-The synthetic data are easier than reality, so real numbers will be lower. **The lesson holds
+These first simulations used the earlier, richer variable set (with p-tau181 and GFAP). **With
+the current compact, realistic set** (p-tau217 + Aβ42/40 + routine data; AUC about 0.89):
+
+| training grey-zone patients | NEGATIVE (rule-out) certified | POSITIVE (rule-in) certified | LPs avoided |
+|---|---|---|---|
+| 600 (the default dataset) | no | no | **0 %** – everyone INCONCLUSIVE |
+| 1000 | no (2 of 2 runs) | no | 0 % |
+| 1500 | 1 of 2 runs | no | 0–35 % |
+| 2500 | yes | no | 22–31 % (true NPV 94.6–96.6 %) |
+
+So with 600 patients **the shipped default model never gives an answer**: it refers everyone to LP.
+This is the correct, safe behaviour, but it means that a 95 % guarantee is out of reach at
+this cohort size. Ways forward:
+- **pool cohorts** across centres;
+- add a **second, independent amyloid marker**;
+- relax the target to a lower PPV/NPV or a lower confidence level, which is a clinical
+  decision; or
+- use `use_confidence_bound: false` (point estimates only), for **exploratory teaching
+  demonstrations only**.
+
+The earlier conclusion still holds, now more strongly. **The lesson holds
 anyway: with ~100 grey-zone patients the safe answer is "inconclusive for everyone".** The
 statistics need several hundred grey-zone patients with LP before the tool can safely spare a
 meaningful share of LPs. That is a strong argument for a multicenter or prospective design, and a

@@ -1,5 +1,5 @@
 {
-  "created": "2026-11-11T16:51:24",
+  "created": "2026-11-11T17:19:59",
   "source_file": "synthetic_training_dataset.xlsx",
   "cohort": {
     "rows_in_file": 600,
@@ -7,188 +7,157 @@
     "missing_ptau217": 0,
     "outside_grey_zone": 0,
     "n_train": 600,
-    "n_lp_positive": 244,
-    "n_lp_negative": 356,
-    "prevalence": 0.4066666666666667
+    "n_lp_positive": 218,
+    "n_lp_negative": 382,
+    "prevalence": 0.36333333333333334
   },
   "features": [
-    "age",
-    "sex",
-    "education_years",
-    "bmi",
     "egfr",
     "triglycerides",
-    "hemoglobin",
     "anemia",
-    "ldl",
-    "hdl",
     "ptau217",
-    "ptau181",
     "ab42_ab40_ratio",
     "ptau217_ab42_ratio",
-    "gfap",
     "apoe4",
     "hypertension",
-    "diabetes",
     "stroke",
-    "cardiovascular_disease",
-    "sleep_apnea",
-    "weight_loss",
-    "clinical_stage",
-    "moca",
-    "mta_score"
+    "clinical_stage"
   ],
   "cv": {
     "folds": 5,
     "repeats": 5,
     "repeat_aucs": [
-      0.9459845275372997,
-      0.9473084361760914,
-      0.9476998526432123,
-      0.9516255295634555,
-      0.9459154540431018
+      0.8795451270474088,
+      0.8826912916086268,
+      0.8846486382631251,
+      0.8892237859647437,
+      0.8837840434218742
     ]
   },
   "auc_model": {
-    "value": 0.9495648369865537,
+    "value": 0.8868821749363562,
     "ci": [
-      0.933601879021879,
-      0.965051822743475
+      0.8570986803286548,
+      0.9150442108233315
     ]
   },
   "auc_ptau217_alone": {
-    "value": 0.7739512341130964,
+    "value": 0.7532482347855325,
     "ci": [
-      0.7333574994879433,
-      0.81070011989564
+      0.711570154528208,
+      0.7945334867513556
     ]
   },
   "thresholds": {
-    "positive": 0.82,
-    "negative": 0.25
+    "positive": null,
+    "negative": null
   },
   "threshold_details": {
-    "positive": {
-      "threshold": 0.82,
-      "n_called": 66,
-      "n_correct": 66,
-      "n_wrong": 0,
-      "predictive_value": 1.0,
-      "lower_bound": 0.9556248273818158,
-      "passes": true
-    },
-    "negative": {
-      "threshold": 0.25,
-      "n_called": 234,
-      "n_correct": 228,
-      "n_wrong": 6,
-      "predictive_value": 0.9743589743589743,
-      "lower_bound": 0.950021608767086,
-      "passes": true
-    }
+    "positive": null,
+    "negative": null
   },
   "oof_triage": {
     "n": 600,
-    "n_lp_positive": 244,
-    "n_lp_negative": 356,
-    "called_positive": 66,
-    "called_negative": 234,
-    "inconclusive": 300,
-    "true_positive": 66,
+    "n_lp_positive": 218,
+    "n_lp_negative": 382,
+    "called_positive": 0,
+    "called_negative": 0,
+    "inconclusive": 600,
+    "true_positive": 0,
     "false_positive": 0,
-    "true_negative": 228,
-    "false_negative": 6,
+    "true_negative": 0,
+    "false_negative": 0,
     "ppv": {
-      "k": 66,
-      "n": 66,
-      "value": 1.0,
+      "k": 0,
+      "n": 0,
+      "value": NaN,
       "ci": [
-        0.945641152829878,
-        1.0
+        NaN,
+        NaN
       ]
     },
     "npv": {
-      "k": 228,
-      "n": 234,
-      "value": 0.9743589743589743,
+      "k": 0,
+      "n": 0,
+      "value": NaN,
       "ci": [
-        0.9450285895793185,
-        0.9905333312056256
+        NaN,
+        NaN
       ]
     },
     "resolved": {
-      "k": 300,
+      "k": 0,
       "n": 600,
-      "value": 0.5,
+      "value": 0.0,
       "ci": [
-        0.4592436802668269,
-        0.5407563197331731
+        0.0,
+        0.006129271330669258
       ]
     },
     "accuracy_resolved": {
-      "k": 294,
-      "n": 300,
-      "value": 0.98,
+      "k": 0,
+      "n": 0,
+      "value": NaN,
       "ci": [
-        0.9569789173264831,
-        0.9926258379982736
+        NaN,
+        NaN
       ]
     },
     "positives_ruled_in": {
-      "k": 66,
-      "n": 244,
-      "value": 0.27049180327868855,
+      "k": 0,
+      "n": 218,
+      "value": 0.0,
       "ci": [
-        0.21580126924922233,
-        0.3308529038753744
+        0.0,
+        0.016779101523217443
       ]
     },
     "negatives_ruled_out": {
-      "k": 228,
-      "n": 356,
-      "value": 0.6404494382022472,
+      "k": 0,
+      "n": 382,
+      "value": 0.0,
       "ci": [
-        0.588190905217721,
-        0.6903498937477411
+        0.0,
+        0.009610275788286627
       ]
     },
-    "errors": 6
+    "errors": 0
   },
   "nested": {
     "outer_folds": 5,
     "fold_thresholds": [
       {
         "positive": null,
-        "negative": 0.25
+        "negative": null
       },
       {
         "positive": null,
-        "negative": 0.22
+        "negative": null
       },
       {
         "positive": null,
-        "negative": 0.26
+        "negative": 0.05
       },
       {
         "positive": null,
-        "negative": 0.22
+        "negative": null
       },
       {
         "positive": null,
-        "negative": 0.18
+        "negative": null
       }
     ],
     "metrics": {
       "n": 600,
-      "n_lp_positive": 244,
-      "n_lp_negative": 356,
+      "n_lp_positive": 218,
+      "n_lp_negative": 382,
       "called_positive": 0,
-      "called_negative": 205,
-      "inconclusive": 395,
+      "called_negative": 19,
+      "inconclusive": 581,
       "true_positive": 0,
       "false_positive": 0,
-      "true_negative": 200,
-      "false_negative": 5,
+      "true_negative": 18,
+      "false_negative": 1,
       "ppv": {
         "k": 0,
         "n": 0,
@@ -199,178 +168,103 @@
         ]
       },
       "npv": {
-        "k": 200,
-        "n": 205,
-        "value": 0.975609756097561,
+        "k": 18,
+        "n": 19,
+        "value": 0.9473684210526315,
         "ci": [
-          0.9440021277417113,
-          0.9920341801446212
+          0.7397193458047858,
+          0.9986683711958205
         ]
       },
       "resolved": {
-        "k": 205,
+        "k": 19,
         "n": 600,
-        "value": 0.3416666666666667,
+        "value": 0.03166666666666667,
         "ci": [
-          0.3037444183075428,
-          0.3811566350379854
+          0.01917090026733212,
+          0.049010998614013694
         ]
       },
       "accuracy_resolved": {
-        "k": 200,
-        "n": 205,
-        "value": 0.975609756097561,
+        "k": 18,
+        "n": 19,
+        "value": 0.9473684210526315,
         "ci": [
-          0.9440021277417113,
-          0.9920341801446212
+          0.7397193458047858,
+          0.9986683711958205
         ]
       },
       "positives_ruled_in": {
         "k": 0,
-        "n": 244,
+        "n": 218,
         "value": 0.0,
         "ci": [
           0.0,
-          0.015004649788349866
+          0.016779101523217443
         ]
       },
       "negatives_ruled_out": {
-        "k": 200,
-        "n": 356,
-        "value": 0.5617977528089888,
+        "k": 18,
+        "n": 382,
+        "value": 0.04712041884816754,
         "ci": [
-          0.5085191342184212,
-          0.6140400010391885
+          0.028162232493124145,
+          0.0734501046044929
         ]
       },
-      "errors": 5
+      "errors": 1
     }
   },
   "importance": [
     {
-      "feature": "ptau217_ab42_ratio",
-      "mean_auc_decrease": 0.03517923014276134,
-      "sd": 0.007308626666071661
-    },
-    {
-      "feature": "ptau181",
-      "mean_auc_decrease": 0.030900206130965686,
-      "sd": 0.011760281719736298
+      "feature": "clinical_stage",
+      "mean_auc_decrease": 0.08681400912429067,
+      "sd": 0.0141005194209068
     },
     {
       "feature": "ab42_ab40_ratio",
-      "mean_auc_decrease": 0.029766272901962043,
-      "sd": 0.0036782023366612212
-    },
-    {
-      "feature": "clinical_stage",
-      "mean_auc_decrease": 0.020521951151352556,
-      "sd": 0.0047827950041054584
-    },
-    {
-      "feature": "egfr",
-      "mean_auc_decrease": 0.017034804727837926,
-      "sd": 0.004099138166577666
-    },
-    {
-      "feature": "gfap",
-      "mean_auc_decrease": 0.01667952822756645,
-      "sd": 0.005847955008554055
+      "mean_auc_decrease": 0.05050672399815609,
+      "sd": 0.013542641456416116
     },
     {
       "feature": "ptau217",
-      "mean_auc_decrease": 0.013717310476616316,
-      "sd": 0.005346701589834736
+      "mean_auc_decrease": 0.03225083056478409,
+      "sd": 0.00605818154754093
     },
     {
-      "feature": "moca",
-      "mean_auc_decrease": 0.00509546365494554,
-      "sd": 0.004998796224930905
+      "feature": "ptau217_ab42_ratio",
+      "mean_auc_decrease": 0.018469654580425737,
+      "sd": 0.008033525647009848
     },
     {
       "feature": "apoe4",
-      "mean_auc_decrease": 0.004800373005227114,
-      "sd": 0.001228370365814833
+      "mean_auc_decrease": 0.01204696466324374,
+      "sd": 0.008191226341142948
     },
     {
-      "feature": "mta_score",
-      "mean_auc_decrease": 0.004782504551116218,
-      "sd": 0.002173563067314651
-    },
-    {
-      "feature": "hemoglobin",
-      "mean_auc_decrease": 0.0033775071061288298,
-      "sd": 0.003108778861199278
+      "feature": "egfr",
+      "mean_auc_decrease": 0.004214778489564321,
+      "sd": 0.010053996703002627
     },
     {
       "feature": "triglycerides",
-      "mean_auc_decrease": 0.0017483172846603345,
-      "sd": 0.0033868687033967036
-    },
-    {
-      "feature": "hdl",
-      "mean_auc_decrease": 0.0016017567042466263,
-      "sd": 0.0016643461801910818
-    },
-    {
-      "feature": "bmi",
-      "mean_auc_decrease": 0.000973466460136483,
-      "sd": 0.0020782732655427886
-    },
-    {
-      "feature": "age",
-      "mean_auc_decrease": 0.0009552154195011252,
-      "sd": 0.0005797268220928597
+      "mean_auc_decrease": 0.004044850498338892,
+      "sd": 0.0034827540637335916
     },
     {
       "feature": "hypertension",
-      "mean_auc_decrease": 0.0004722415178903816,
-      "sd": 0.00045062080241769657
+      "mean_auc_decrease": 0.0022455451525219064,
+      "sd": 0.002081625074457332
     },
     {
       "feature": "anemia",
-      "mean_auc_decrease": 0.0004592136150234438,
-      "sd": 0.0005526243749178232
+      "mean_auc_decrease": 0.001653459759334934,
+      "sd": 0.005425103387466788
     },
     {
       "feature": "stroke",
-      "mean_auc_decrease": 0.0002079507468088826,
-      "sd": 0.00027788965914716347
-    },
-    {
-      "feature": "sex",
-      "mean_auc_decrease": 0.00019622363812499266,
-      "sd": 0.00028638151633723815
-    },
-    {
-      "feature": "cardiovascular_disease",
-      "mean_auc_decrease": 0.0001727694207573416,
-      "sd": 0.00020576098980894358
-    },
-    {
-      "feature": "ldl",
-      "mean_auc_decrease": 0.00011474601577717624,
-      "sd": 0.0004257202098326021
-    },
-    {
-      "feature": "weight_loss",
-      "mean_auc_decrease": 5.7870370370349834e-05,
-      "sd": 0.00031932079932237066
-    },
-    {
-      "feature": "sleep_apnea",
-      "mean_auc_decrease": 5.679912810192533e-05,
-      "sd": 0.0007970721289878813
-    },
-    {
-      "feature": "diabetes",
-      "mean_auc_decrease": -2.2612527013956553e-05,
-      "sd": 0.0002880823620853985
-    },
-    {
-      "feature": "education_years",
-      "mean_auc_decrease": -0.0003333526290015509,
-      "sd": 0.0006447303243222005
+      "mean_auc_decrease": 0.0009191053744297542,
+      "sd": 0.0022957356207404123
     }
   ],
   "decision_rule": {
@@ -392,5 +286,8 @@
     "4": 181,
     "5": 208
   },
-  "messages": []
+  "messages": [
+    "No threshold reached the safety target for POSITIVE (rule-in) calls with the current data: the model will never call a patient POSITIVE. More patients are needed.",
+    "No threshold reached the safety target for NEGATIVE (rule-out) calls with the current data: the model will never call a patient NEGATIVE. More patients are needed."
+  ]
 }

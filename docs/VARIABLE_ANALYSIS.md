@@ -1,4 +1,46 @@
-# Variable analysis (leave-one-variable-out) - default synthetic dataset
+# Variable analysis
+
+## Round 2 (current) - forward selection on the hybrid dataset
+
+The dataset combines real CHS clinical covariates with simulated biomarkers. p-tau181, GFAP and
+NfL were removed on request. Starting from p-tau217, the variable that increases the
+cross-validated AUC the most was added at each step (`forward_selection` in
+`greyzone_rf/ablation.py`, raw values in `forward_selection.csv`):
+
+| step | added | n variables | AUC |
+|---|---|---|---|
+| 0 | p-tau217 | 1 | 0.707 |
+| 1 | clinical_stage | 2 | 0.816 |
+| 2 | ab42_ab40_ratio | 3 | 0.854 |
+| 3 | apoe4 | 4 | 0.869 |
+| 4 | stroke | 5 | 0.875 |
+| 5 | egfr | 6 | 0.880 |
+| 6 | triglycerides | 7 | 0.885 |
+| 7 | hypertension | 8 | 0.890 |
+| 8 | anemia | 9 | 0.891 |
+| 9 | mta_score | 10 | 0.892 |
+| 10 | cardiovascular_disease | 11 | 0.896 |
+| 11 | sleep_apnea | 12 | 0.896 |
+| 12 | diabetes | 13 | 0.896 |
+| 13 | weight_loss | 14 | 0.895 |
+| 14 | hdl | 15 | 0.896 |
+
+Nested validation, 600 patients, Aβ42/40 missing for half:
+
+| set | n | AUC | certified thresholds | LPs avoided |
+|---|---|---|---|---|
+| all | 23 | 0.890 | none | 0 % |
+| compact 8 | 8 | 0.893 | none | 0 % |
+| compact 10 | 10 | 0.895 | none | 0 % |
+
+**Decision:** compact 10 = p-tau217, clinical_stage, ab42_ab40_ratio, ptau217_ab42_ratio, apoe4,
+stroke, egfr, triglycerides, hypertension, anemia. With Aβ42/40 always measured (your choice) and
+600 patients, the default model has AUC 0.887 but still certifies no threshold. The approximate
+cohort sizes needed are in README §6.
+
+---
+
+## Round 1 (earlier, 33 variables) - leave-one-variable-out
 
 Run with `python analyze_variables.py data/default_training/synthetic_training_dataset.xlsx` on the
 33-variable configuration (600 grey-zone patients). Each variable was removed in turn and the

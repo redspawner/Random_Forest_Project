@@ -105,6 +105,7 @@ random_forest:
 # -----------------------------------------------------------------------------
 features:
   - name: age
+    use_as_feature: false   # needed to compute eGFR / anaemia; not a model variable (forward selection)
     description: Age at plasma collection
     unit: years
     min: 18
@@ -113,27 +114,12 @@ features:
     aliases: [idade, age_years]
 
   - name: sex
+    use_as_feature: false   # needed to compute eGFR / anaemia; not a model variable (forward selection)
     type: sex
     description: Biological sex (M = male, F = female)
     unit: M/F
     example: F
     aliases: [sexo, gender, genero]
-
-  - name: education_years
-    description: Years of formal education (adjusts the interpretation of MoCA)
-    unit: years
-    min: 0
-    max: 30
-    example: 9
-    aliases: [education, escolaridade, anos_escolaridade]
-
-  - name: bmi
-    description: Body mass index
-    unit: kg/m2
-    min: 10
-    max: 70
-    example: 26.1
-    aliases: [imc, body_mass_index]
 
   - name: egfr
     description: Estimated glomerular filtration rate (left blank -> computed from creatinine with CKD-EPI 2021)
@@ -165,6 +151,7 @@ features:
   # Chosen because they are associated with plasma p-tau217 levels or with non-AD causes
   # of the same clinical picture, independently of brain amyloid (sources in DATASET_CARD.md).
   - name: hemoglobin
+    use_as_feature: false   # the model uses the WHO anaemia flag computed from it
     description: Blood haemoglobin (complete blood count) - anaemia raises plasma p-tau217
     unit: g/dL
     min: 4
@@ -180,32 +167,7 @@ features:
     in_template: false
     aliases: [anemia_who, anaemia]
 
-  - name: glucose
-    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
-    description: Fasting plasma glucose (diabetes / insulin resistance)
-    unit: mg/dL
-    min: 30
-    max: 800
-    example: 98
-    aliases: [glicose, glicemia, glycemia, fasting_glucose]
-
-  - name: ldl
-    description: LDL cholesterol (vascular risk)
-    unit: mg/dL
-    min: 10
-    max: 500
-    example: 115
-    aliases: [ldl_cholesterol, colesterol_ldl, ldl_c]
-
-  - name: hdl
-    description: HDL cholesterol (vascular risk; associated with plasma AD biomarkers)
-    unit: mg/dL
-    min: 5
-    max: 200
-    example: 55
-    aliases: [hdl_cholesterol, colesterol_hdl, hdl_c]
-
-  # --- Plasma Alzheimer / neuronal biomarkers ---
+  # --- Plasma Alzheimer biomarkers (same Lumipulse tube as p-tau217) ---
   - name: ptau217
     description: Plasma p-tau217 (REQUIRED; defines the grey zone)
     unit: pg/mL
@@ -214,16 +176,8 @@ features:
     example: 0.25
     aliases: [p_tau217, plasma_ptau217, ptau_217]
 
-  - name: ptau181
-    description: Plasma p-tau181
-    unit: pg/mL
-    min: 0
-    max: 500
-    example: 1.6
-    aliases: [p_tau181, plasma_ptau181]
-
   - name: ab42
-    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
+    use_as_feature: false   # input for the ratios; not a model variable itself
     description: Plasma amyloid-beta 42
     unit: pg/mL
     min: 0.1
@@ -232,7 +186,7 @@ features:
     aliases: [abeta42, amyloid_beta_42, ab1_42, abeta_42]
 
   - name: ab40
-    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
+    use_as_feature: false   # input for the ratios; not a model variable itself
     description: Plasma amyloid-beta 40
     unit: pg/mL
     min: 1
@@ -254,23 +208,6 @@ features:
     compute: ptau217 / ab42
     in_template: false
 
-  - name: gfap
-    description: Plasma glial fibrillary acidic protein
-    unit: pg/mL
-    min: 1
-    max: 10000
-    example: 150
-    aliases: [plasma_gfap]
-
-  - name: nfl
-    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
-    description: Plasma neurofilament light chain
-    unit: pg/mL
-    min: 0.5
-    max: 2000
-    example: 18
-    aliases: [nf_l, neurofilament_light, plasma_nfl]
-
   - name: apoe4
     type: apoe4
     description: Number of APOE e4 alleles (0, 1, 2) or genotype text such as E3/E4
@@ -278,34 +215,7 @@ features:
     example: E3/E4
     aliases: [apoe, apoe_genotype, apoe_e4]
 
-  # --- Routine consultation: vital signs, diagnoses and medication known to the clinician ---
-  - name: systolic_bp
-    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
-    description: Systolic blood pressure at the visit
-    unit: mmHg
-    min: 60
-    max: 260
-    example: 138
-    aliases: [sbp, pas, tensao_sistolica, pressao_sistolica, systolic]
-
-  - name: diastolic_bp
-    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
-    description: Diastolic blood pressure at the visit
-    unit: mmHg
-    min: 30
-    max: 160
-    example: 78
-    aliases: [dbp, pad, tensao_diastolica, pressao_diastolica, diastolic]
-
-  - name: heart_rate
-    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
-    description: Heart rate at the visit
-    unit: bpm
-    min: 25
-    max: 220
-    example: 72
-    aliases: [hr, fc, frequencia_cardiaca, pulse, pulso]
-
+  # --- Routine consultation: diagnoses and medication known to the clinician ---
   - name: hypertension
     type: binary
     description: Known hypertension (diagnosis or antihypertensive medication), yes/no
@@ -313,40 +223,12 @@ features:
     example: 1
     aliases: [hta, hipertensao, arterial_hypertension, antihypertensive]
 
-  - name: diabetes
-    type: binary
-    description: Known diabetes (diagnosis or glucose-lowering medication), yes/no
-    unit: 0/1
-    example: 0
-    aliases: [dm, diabetes_mellitus]
-
   - name: stroke
     type: binary
     description: History of stroke or TIA, yes/no
     unit: 0/1
     example: 0
     aliases: [avc, stroke_tia, ait]
-
-  - name: cardiovascular_disease
-    type: binary
-    description: Myocardial infarction, coronary disease or heart failure, yes/no
-    unit: 0/1
-    example: 0
-    aliases: [cvd, mi, enfarte, doenca_cardiovascular, coronary_disease]
-
-  - name: sleep_apnea
-    type: binary
-    description: Known obstructive sleep apnoea, yes/no
-    unit: 0/1
-    example: 0
-    aliases: [osa, saos, apneia_sono, obstructive_sleep_apnea]
-
-  - name: weight_loss
-    type: binary
-    description: Recent unintentional weight loss, yes/no
-    unit: 0/1
-    example: 0
-    aliases: [perda_peso, emagrecimento]
 
   - name: clinical_stage
     type: stage
@@ -363,27 +245,3 @@ features:
     use_as_feature: false
     aliases: [red_flag, atypical, sinais_atipicos]
 
-  - name: moca
-    description: Montreal Cognitive Assessment total score
-    unit: points (0-30)
-    min: 0
-    max: 30
-    example: 23
-    aliases: [moca_score, moca_total]
-
-  - name: mta_score
-    description: MRI medial temporal atrophy, Scheltens scale (worse side)
-    unit: 0-4
-    min: 0
-    max: 4
-    example: 1
-    aliases: [mta, scheltens]
-
-  - name: fazekas
-    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
-    description: MRI white-matter hyperintensities, Fazekas scale
-    unit: 0-3
-    min: 0
-    max: 3
-    example: 1
-    aliases: [fazekas_score]

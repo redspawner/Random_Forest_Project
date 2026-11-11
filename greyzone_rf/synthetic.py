@@ -35,6 +35,11 @@ ANEMIA_PTAU = np.log(1.25)   # direct effect; with its link to age/eGFR the obse
 EGFR_PTAU = np.log(1.12) / 10     # +12% p-tau217 per 10 mL/min lower eGFR (Lumipulse, Mayo data)
 
 
+# APOE e4 allele count frequencies of the Knight ADRC CSF study (Craig-Schapiro et al. 2011, n = 333):
+# E3E3 167, E3E4 106, E2E3 37, E4E4 13, E2E4 8, E2E2 2  ->  0: 206, 1: 114, 2: 13
+APOE4_ADRC = [206 / 333, 114 / 333, 13 / 333]
+
+
 def _sigmoid(x):
     return 1.0 / (1.0 + np.exp(-x))
 
@@ -48,21 +53,33 @@ def _creatinine_from_egfr(egfr, age, female):
     return kappa * ratio
 
 
-def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
-    """Simulate ``n`` consecutive memory-clinic patients (all p-tau217 values)."""
+def simulate_memory_clinic(n: int, seed: int = 0, real_base: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Simulate ``n`` consecutive memory-clinic patients (all p-tau217 values).
+
+    ``real_base`` (see :func:`real_clinical_base`): real patients' clinical covariates (age, sex,
+    BMI, creatinine/eGFR, LDL, diabetes, stroke, cardiovascular disease, systolic BP) and real
+    APOE genotype frequencies are used instead of simulated ones; everything else is simulated
+    conditionally on them.
+    """
     rng = np.random.default_rng(seed)
-    age = np.clip(rng.normal(71, 8, n), 50, 92)
-    female = (rng.random(n) < 0.57).astype(int)
+    base = real_base
+    age = np.clip(rng.normal(71, 8, n), 50, 92) if base is None else base["age"].to_numpy(float)
+    female = (rng.random(n) < 0.57).astype(int) if base is None else base["female"].to_numpy(int)
     education = np.clip(np.round(rng.normal(8, 4, n)), 0, 20)
-    apoe4 = rng.choice([0, 1, 2], size=n, p=[0.66, 0.29, 0.05])
+    apoe4 = rng.choice([0, 1, 2], size=n, p=[0.66, 0.29, 0.05] if base is None else APOE4_ADRC)
     amyloid = (rng.random(n) < _sigmoid(-0.55 + 0.05 * (age - 71) + 1.25 * apoe4)).astype(int)
     burden = np.where(amyloid == 1, rng.normal(1.0, 0.6, n), rng.normal(0.0, 0.35, n))
     non_ad = rng.gamma(1.2, 0.5, n)          # non-AD neurodegeneration (vascular, FTLD, ...)
 
-    egfr = np.clip(rng.normal(74 - 0.8 * (age - 71), 16, n), 15, 120)
-    bmi = np.clip(rng.normal(26.8 - 0.8 * amyloid, 4.2, n), 16, 45)
+    if base is None:
+        egfr = np.clip(rng.normal(74 - 0.8 * (age - 71), 16, n), 15, 120)
+        bmi = np.clip(rng.normal(26.8 - 0.8 * amyloid, 4.2, n), 16, 45)
+        creat = _creatinine_from_egfr(egfr, age, female)
+    else:
+        creat = base["creatinine"].to_numpy(float)
+        egfr = np.clip(ckd_epi_2021(creat, age, female), 5, 130)
+        bmi = np.clip(base["bmi"].to_numpy(float) - 0.8 * amyloid, 15, 50)   # AD-related weight loss
     tg = np.exp(rng.normal(np.log(125) + 0.03 * (bmi - 26.5), 0.4, n))
-    creat = _creatinine_from_egfr(egfr, age, female)
 
     renal = 85 - egfr
 
@@ -72,22 +89,32 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
                                         - 0.01 * (age - 71), 1.2), 7, 18)
     anemia = np.where(female == 1, hemoglobin < 12.0, hemoglobin < 13.0).astype(int)
     diabetes = (rng_lab.random(n) < _sigmoid(-1.6 + 0.08 * (bmi - 26.5))).astype(int)
+    if base is not None:
+        diabetes = base["diabetes"].to_numpy(int)
     glucose = np.exp(rng_lab.normal(np.log(np.where(diabetes == 1, 145, 96)) + 0.006 * (bmi - 26.5), 0.13))
-    ldl = np.clip(rng_lab.normal(118, 35, n), 30, 300)
+    ldl = np.clip(rng_lab.normal(118, 35, n), 30, 300) if base is None else base["ldl"].to_numpy(float)
     hdl = np.clip(rng_lab.normal(52 + 7 * female - 0.9 * (bmi - 26.5), 13, n), 20, 120)
 
     # Routine consultation: vital signs, known diagnoses / medication, clinical stage (separate stream).
     rng_cl = np.random.default_rng(seed + 104729)
-    hypertension = (rng_cl.random(n) < _sigmoid(-0.2 + 0.05 * (age - 71) + 0.06 * (bmi - 26.5)
-                                                 + 0.8 * diabetes)).astype(int)
-    systolic = np.clip(rng_cl.normal(126 + 10 * hypertension + 0.3 * (age - 71), 15), 85, 210)
+    if base is None:
+        hypertension = (rng_cl.random(n) < _sigmoid(-0.2 + 0.05 * (age - 71) + 0.06 * (bmi - 26.5)
+                                                     + 0.8 * diabetes)).astype(int)
+        systolic = np.clip(rng_cl.normal(126 + 10 * hypertension + 0.3 * (age - 71), 15), 85, 210)
+    else:   # known/treated hypertension simulated from the REAL blood pressure, age and diabetes
+        systolic = base["systolic_bp"].to_numpy(float)
+        hypertension = (rng_cl.random(n) < _sigmoid(0.2 + 0.06 * (systolic - 130) + 0.03 * (age - 75)
+                                                     + 0.6 * diabetes)).astype(int)
     diastolic = np.clip(rng_cl.normal(75 + 4 * hypertension - 0.1 * (age - 71), 9), 45, 120)
     heart_rate = np.clip(rng_cl.normal(71, 11, n), 40, 130)
-    diabetes_known = diabetes * (rng_cl.random(n) < 0.85)
+    diabetes_known = diabetes * (rng_cl.random(n) < 0.85) if base is None else diabetes
     stroke = (rng_cl.random(n) < _sigmoid(-3.1 + 0.05 * (age - 71) + 0.8 * hypertension
                                           + 0.5 * diabetes)).astype(int)
     cvd = (rng_cl.random(n) < _sigmoid(-2.5 + 0.05 * (age - 71) + 0.7 * hypertension + 0.5 * diabetes
                                        + 0.5 * (1 - female))).astype(int)
+    if base is not None:
+        stroke = base["stroke"].to_numpy(int)
+        cvd = base["cardiovascular_disease"].to_numpy(int)
     osa = (rng_cl.random(n) < _sigmoid(-2.3 + 0.12 * (bmi - 26.5) + 0.6 * (1 - female))).astype(int)
     weight_loss = (rng_cl.random(n) < _sigmoid(-2.7 + 1.0 * amyloid * (burden > 0.8) + 0.6 * non_ad)).astype(int)
     atypical = (rng_cl.random(n) < 0.03).astype(int)
@@ -127,12 +154,8 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
         "creatinine": np.round(creat, 2),
         "triglycerides": np.round(tg).astype(int),
         "hemoglobin": np.round(hemoglobin, 1),
-        "glucose": np.round(glucose).astype(int),
         "ldl": np.round(ldl).astype(int),
         "hdl": np.round(hdl).astype(int),
-        "systolic_bp": np.round(systolic).astype(int),
-        "diastolic_bp": np.round(diastolic).astype(int),
-        "heart_rate": np.round(heart_rate).astype(int),
         "hypertension": hypertension,
         "diabetes": diabetes_known.astype(int),
         "stroke": stroke,
@@ -142,25 +165,21 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
         "clinical_stage": np.array(["SCD", "MCI", "Dementia"])[stage],
         "atypical_features": atypical,
         "ptau217": np.round(np.exp(ln_ptau217), 3),
-        "ptau181": np.round(np.exp(ln_ptau181), 2),
         "ab42": np.round(ab42, 1),
         "ab40": np.round(ab40, 1),
-        "gfap": np.round(np.exp(ln_gfap), 1),
-        "nfl": np.round(np.exp(ln_nfl), 1),
         "apoe4": apoe4,
         "moca": moca.astype(int),
         "mta_score": mta.astype(int),
-        "fazekas": fazekas.astype(int),
         "lp_result": np.where(amyloid == 1, "Positive", "Negative"),
     })
 
 
 MISSING_RATES = {
-    "education_years": 0.05, "bmi": 0.05, "triglycerides": 0.10, "hemoglobin": 0.05, "glucose": 0.08,
-    "ldl": 0.15, "hdl": 0.15, "systolic_bp": 0.05, "diastolic_bp": 0.05, "heart_rate": 0.05,
-    "hypertension": 0.03, "diabetes": 0.03, "stroke": 0.03, "cardiovascular_disease": 0.03,
-    "sleep_apnea": 0.05, "weight_loss": 0.08, "clinical_stage": 0.02, "ptau181": 0.10,
-    "gfap": 0.08, "nfl": 0.08, "apoe4": 0.30, "moca": 0.05, "mta_score": 0.15, "fazekas": 0.15,
+    # Abeta42/40 always part of the work-up, MRI MTA rating often absent, APOE usually known.
+    "education_years": 0.05, "bmi": 0.03, "triglycerides": 0.10, "hemoglobin": 0.05, "ldl": 0.12,
+    "hdl": 0.12, "apoe4": 0.10, "moca": 0.05, "mta_score": 0.40, "hypertension": 0.03, "diabetes": 0.03,
+    "stroke": 0.03, "cardiovascular_disease": 0.03, "sleep_apnea": 0.05, "weight_loss": 0.08,
+    "clinical_stage": 0.02,
 }
 
 
@@ -168,7 +187,7 @@ def _add_missingness(df: pd.DataFrame, rng) -> pd.DataFrame:
     df = df.astype(object)
     for column, rate in MISSING_RATES.items():
         df.loc[rng.random(len(df)) < rate, column] = None
-    amyloid_missing = rng.random(len(df)) < 0.08          # Abeta assay not run
+    amyloid_missing = rng.random(len(df)) < 0.03          # Abeta42/40 part of the work-up; rare assay failure
     df.loc[amyloid_missing, ["ab42", "ab40"]] = None
     egfr_missing = rng.random(len(df)) < 0.06             # only creatinine available
     df.loc[egfr_missing, "egfr"] = None
@@ -177,13 +196,15 @@ def _add_missingness(df: pd.DataFrame, rng) -> pd.DataFrame:
 
 
 def grey_zone_cohort(n_patients: int, lower: float = 0.14, upper: float = 0.43,
-                     seed: int = 0, prefix: str = "SYN") -> pd.DataFrame:
+                     seed: int = 0, prefix: str = "SYN", real: bool = False) -> pd.DataFrame:
     """Return ``n_patients`` synthetic patients whose p-tau217 is in the grey zone."""
     rng = np.random.default_rng(seed + 1)
     chunks, total = [], 0
     batch = 0
     while total < n_patients:
-        pop = simulate_memory_clinic(max(4 * n_patients, 2000), seed=seed + 17 * batch)
+        size = max(4 * n_patients, 2000)
+        base = real_clinical_base(size, seed=seed + 17 * batch, chs=_chs_cache()) if real else None
+        pop = simulate_memory_clinic(size, seed=seed + 17 * batch, real_base=base)
         grey = pop[(pop["ptau217"] >= lower) & (pop["ptau217"] <= upper)]
         chunks.append(grey)
         total += len(grey)
@@ -195,18 +216,19 @@ def grey_zone_cohort(n_patients: int, lower: float = 0.14, upper: float = 0.43,
 
 
 def demo_new_patients(n_grey: int = 40, seed: int = 999, lower: float = 0.14,
-                      upper: float = 0.43) -> tuple[pd.DataFrame, pd.DataFrame]:
+                      upper: float = 0.43, real: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
     """New (unlabelled) patients for the prediction demo, plus a hidden answer key.
 
     Besides grey-zone patients, three special rows show the safety checks:
-    one below the grey zone, one above it, and one with an impossible MoCA (34).
+    one below the grey zone, one above it, and one with an impossible haemoglobin (45 g/dL).
     """
-    df = grey_zone_cohort(n_grey, lower, upper, seed=seed, prefix="NEW")
-    extra = simulate_memory_clinic(400, seed=seed + 5)
+    df = grey_zone_cohort(n_grey, lower, upper, seed=seed, prefix="NEW", real=real)
+    extra = simulate_memory_clinic(400, seed=seed + 5,
+                                   real_base=real_clinical_base(400, seed + 5, chs=_chs_cache()) if real else None)
     low = extra[extra["ptau217"] < lower].iloc[[0]]
     high = extra[extra["ptau217"] > upper].iloc[[0]]
     bad = extra[(extra["ptau217"] >= lower) & (extra["ptau217"] <= upper)].iloc[[0]].copy()
-    bad["moca"] = 34
+    bad["hemoglobin"] = 45.0          # impossible value (typing error) -> CHECK DATA
     specials = pd.concat([low, high, bad]).astype(object)
     specials.insert(0, "patient_id", ["NEW-LOW", "NEW-HIGH", "NEW-TYPO"])
     df = pd.concat([df, specials], ignore_index=True)
@@ -239,8 +261,6 @@ CALIBRATION_TARGETS = {
     "auc_ab42_ab40": (0.72, "plasma Abeta42/40, same study (0.85 vs CSF in a Japanese memory-clinic study)"),
     "grey_zone_fraction": (0.30, "intermediate zone 15-30% with two cut-offs (several Lumipulse studies)"),
     "ptau217_increase_per_10_egfr": (0.12, "+12% Lumipulse p-tau217 per 10 mL/min lower eGFR (Mayo Clinic data)"),
-    "age_variance_nfl": (0.26, "age explains 26% of plasma NfL variance (memory-clinic study)"),
-    "age_variance_gfap": (0.12, "age explains 12% of plasma GFAP variance (same study)"),
     "ptau217_ratio_anemia": (1.40, "optimal p-tau217 cut-off with anaemia 0.595 vs 0.425 pg/mL (JAMA Neurol 2026, n=2571)"),
 }
 
@@ -253,11 +273,13 @@ def _anemia_ratio(pop: pd.DataFrame, y) -> float:
     return float(pop["ptau217"][neg & anemic].median() / pop["ptau217"][neg & ~anemic].median())
 
 
-def calibration_report(n: int = 30000, seed: int = 0, lower: float = 0.14, upper: float = 0.43) -> pd.DataFrame:
+def calibration_report(n: int = 30000, seed: int = 0, lower: float = 0.14, upper: float = 0.43,
+                       real: bool = False) -> pd.DataFrame:
     """Compare the simulated population with the literature targets."""
     from sklearn.metrics import roc_auc_score
 
-    pop = simulate_memory_clinic(n, seed)
+    base = real_clinical_base(n, seed, chs=_chs_cache()) if real else None
+    pop = simulate_memory_clinic(n, seed, real_base=base)
     y = (pop["lp_result"] == "Positive").astype(int)
     ratio = pop["ab42"] / pop["ab40"]
     simulated = {
@@ -266,9 +288,55 @@ def calibration_report(n: int = 30000, seed: int = 0, lower: float = 0.14, upper
         "auc_ab42_ab40": roc_auc_score(y, -ratio),
         "grey_zone_fraction": float(((pop["ptau217"] >= lower) & (pop["ptau217"] <= upper)).mean()),
         "ptau217_increase_per_10_egfr": float(np.exp(10 * EGFR_PTAU) - 1),
-        "age_variance_nfl": float(np.corrcoef(pop["age"], np.log(pop["nfl"]))[0, 1] ** 2),
-        "age_variance_gfap": float(np.corrcoef(pop["age"], np.log(pop["gfap"]))[0, 1] ** 2),
         "ptau217_ratio_anemia": _anemia_ratio(pop, y),
     }
     return pd.DataFrame([{"quantity": k, "published": CALIBRATION_TARGETS[k][0], "simulated": round(v, 3),
                           "source": CALIBRATION_TARGETS[k][1]} for k, v in simulated.items()])
+
+
+# ---------------------------------------------------------------------------
+# Real clinical covariates (Cardiovascular Health Study MRI sub-study, public)
+# ---------------------------------------------------------------------------
+CHS_FILE = "data/external/chs_mri_rigr.csv"
+
+
+def load_chs(path=None) -> pd.DataFrame:
+    """The 735 CHS participants, with the columns this project uses (complete cases)."""
+    from .config import PROJECT_ROOT
+
+    raw = pd.read_csv(path or PROJECT_ROOT / CHS_FILE)
+    out = pd.DataFrame({
+        "age": raw["age"],
+        "female": (raw["sex"] == "Female").astype(int),
+        "bmi": raw["weight"] * 0.45359237 / (raw["height"] / 100) ** 2,     # weight is in pounds
+        "creatinine": raw["crt"],
+        "ldl": raw["ldl"],
+        "diabetes": raw["diabetes"].astype(int),
+        "stroke": (raw["stroke"] > 0).astype(int),
+        "cardiovascular_disease": ((raw["chd"] > 0) | (raw["chf"] > 0)).astype(int),
+        "systolic_bp": raw["sbp"],
+    })
+    return out.dropna().reset_index(drop=True)
+
+
+def real_clinical_base(n: int, seed: int = 0, chs: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Resample ``n`` real CHS participants with small jitter (no row copied unchanged)."""
+    chs = load_chs() if chs is None else chs
+    rng = np.random.default_rng(seed + 31337)
+    rows = chs.iloc[rng.integers(0, len(chs), n)].reset_index(drop=True).copy()
+    rows["age"] = np.clip(rows["age"] + rng.integers(-2, 3, n), 60, 99)
+    rows["bmi"] = rows["bmi"] * np.exp(rng.normal(0, 0.03, n))
+    rows["creatinine"] = np.clip(rows["creatinine"] * np.exp(rng.normal(0, 0.05, n)), 0.3, 8)
+    rows["ldl"] = np.clip(rows["ldl"] * np.exp(rng.normal(0, 0.05, n)), 20, 350)
+    rows["systolic_bp"] = np.clip(rows["systolic_bp"] + rng.normal(0, 5, n), 80, 230)
+    return rows
+
+
+_CHS = None
+
+
+def _chs_cache() -> pd.DataFrame:
+    global _CHS
+    if _CHS is None:
+        _CHS = load_chs()
+    return _CHS

@@ -93,3 +93,42 @@ def verdict(row, noise_auc: float, noise_res: float) -> str:
     if d_auc > limit and d_res > -max(noise_res, 1.0):
         return "detrimental - removal improves the model"
     return "no measurable contribution"
+
+
+def forward_selection(prepared: PreparedData, cfg: dict, max_variables: int | None = None, repeats: int = 2,
+                      start: tuple[str, ...] = ("ptau217",), progress=None) -> pd.DataFrame:
+    """Greedy forward selection by cross-validated AUC.
+
+    Starting from p-tau217, the variable that increases the cross-validated AUC the most is added at
+    each step. The resulting curve shows how much each extra variable is worth, and where adding
+    more stops helping (the plateau). Same folds and seed for every candidate.
+    """
+    cfg = copy.deepcopy(cfg)
+    cfg["validation"]["cv_repeats"] = repeats
+    labels = prepared.labels.to_numpy(float)
+    ptau = prepared.table["ptau217"].to_numpy(float)
+    keep = ~np.isnan(labels) & ~np.isnan(ptau) & in_grey_zone(ptau, cfg)
+    table = prepared.table[keep].reset_index(drop=True)
+    y = labels[keep].astype(int)
+    pool = [f for f in model_feature_names(cfg) if table[f].notna().any() and f not in start]
+    seed = int(cfg["validation"]["random_state"])
+    chosen = list(start)
+    first = _evaluate(table[chosen], y, cfg, seed)
+    rows = [{"step": 0, "added": "+".join(start), "n_variables": len(chosen), "auc": round(first["auc"], 4),
+             "resolved_%": round(100 * first["resolved"], 1), "errors": first["errors"]}]
+    max_variables = max_variables or len(pool) + len(start)
+    step = 0
+    while pool and len(chosen) < max_variables:
+        step += 1
+        results = {}
+        for cand in pool:
+            results[cand] = _evaluate(table[chosen + [cand]], y, cfg, seed)
+            if progress:
+                progress(step, f"step {step}: tried {cand}")
+        best = max(results, key=lambda c: results[c]["auc"])
+        chosen.append(best)
+        pool.remove(best)
+        r = results[best]
+        rows.append({"step": step, "added": best, "n_variables": len(chosen), "auc": round(r["auc"], 4),
+                     "resolved_%": round(100 * r["resolved"], 1), "errors": r["errors"]})
+    return pd.DataFrame(rows)
