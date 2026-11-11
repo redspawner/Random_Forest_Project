@@ -165,6 +165,9 @@ def simulate_memory_clinic(n: int, seed: int = 0, real_base: pd.DataFrame | None
         "clinical_stage": np.array(["SCD", "MCI", "Dementia"])[stage],
         "atypical_features": atypical,
         "ptau217": np.round(np.exp(ln_ptau217), 3),
+        # Not in the current model / template (kept for sensitivity analyses; filtered out by make_demo_data.py):
+        "ptau181": np.round(np.exp(ln_ptau181), 2),
+        "gfap": np.round(np.exp(ln_gfap), 1),
         "ab42": np.round(ab42, 1),
         "ab40": np.round(ab40, 1),
         "apoe4": apoe4,
