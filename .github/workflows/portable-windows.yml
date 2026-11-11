@@ -1,0 +1,61 @@
+# Builds the portable Windows bundle (no installation needed on the target PC),
+# tests it on a clean Windows machine, and publishes it as a downloadable artifact.
+name: Portable Windows bundle
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python used only to run the builder
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build the bundle
+        run: python tools/build_portable.py
+
+      - name: Test - libraries import with the bundled Python
+        working-directory: dist/GreyZoneTriage/app
+        run: ..\python\python.exe -c "import numpy, pandas, scipy, sklearn, streamlit, openpyxl, yaml, matplotlib; print('imports OK', sklearn.__version__)"
+
+      - name: Test - shipped default model loads without re-training
+        working-directory: dist/GreyZoneTriage/app
+        run: ..\python\python.exe -c "from greyzone_rf.default_model import default_status as s; r=s(); print(r['loadable'], r['dataset_matches'], r['error']); assert r['loadable'] and r['dataset_matches']"
+
+      - name: Test - classify the example patients
+        working-directory: dist/GreyZoneTriage/app
+        run: ..\python\python.exe predict.py examples\example_2_new_patients_file.xlsx --out $env:RUNNER_TEMP\results.xlsx
+
+      - name: Test - training works (parallel worker processes)
+        working-directory: dist/GreyZoneTriage/app
+        run: ..\python\python.exe train.py examples\example_1_training_file.xlsx --out $env:RUNNER_TEMP\model --no-nested
+
+      - name: Test - the app starts and answers
+        working-directory: dist/GreyZoneTriage/app
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath ..\python\python.exe -ArgumentList "-m","streamlit","run","app.py","--server.headless","true" -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 2
+            try { if ((Invoke-WebRequest -UseBasicParsing http://localhost:8501/_stcore/health).Content -match "ok") { $ok = $true; break } } catch {}
+          }
+          Stop-Process -Id $p.Id -Force
+          if (-not $ok) { throw "Streamlit did not start" }
+          "app OK"
+
+      - name: Upload the zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: GreyZoneTriage_portable_win64
+          path: dist/GreyZoneTriage_portable_win64.zip
+          retention-days: 30
+          compression-level: 0

@@ -29,3 +29,6 @@ Thumbs.db
 ~$*.xlsx
 # example files are tracked even when they look like outputs
 !examples/*.xlsx
+
+# portable Windows bundle (build with tools/build_portable.py)
+dist/

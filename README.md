@@ -62,6 +62,23 @@ Libraries installed (`requirements.txt`): numpy, pandas, scipy, **scikit-learn �
 Forest with native missing-value handling), joblib, openpyxl (Excel), pyyaml (configuration),
 matplotlib (figures), **streamlit** (drag-and-drop interface), jinja2, pytest (tests).
 
+### Portable Windows version (nothing to install)
+
+To give the tool to someone without installing anything, use the **portable bundle**. It is a zip
+(~160 MB) that contains its own complete Windows Python and all libraries.
+
+1. Download `GreyZoneTriage_portable_win64.zip`. It is built automatically on every push by the
+   GitHub Actions workflow *Portable Windows bundle* (repository → **Actions** → latest run →
+   **Artifacts**), or you can build it yourself with `python tools/build_portable.py`.
+2. Extract the zip (right-click → **Extract All**). Do not run it from inside the zip.
+3. Double-click **`START_APP.bat`**. The browser opens at <http://localhost:8501>.
+
+The bundle has the exact library versions of `requirements-pinned.txt`, so the default model
+loads without retraining. The workflow tests every build on a clean Windows machine: imports, the
+default model, classification of the example patients, training, and app start-up. You can
+re-pack the extracted folder as .rar or .zip and send it; the receiving computer needs nothing
+else.
+
 ## 2. Quick start with the synthetic demo
 
 If you used the install scripts, run the commands below with the environment's Python:
@@ -410,6 +427,8 @@ docs/PROJECT_GUIDE.md    step-by-step guide to the whole project
 docs/VARIABLE_ANALYSIS.md which variables help / were removed
 analyze_variables.py     leave-one-variable-out analysis on any training file
 install.bat / .sh        one-click installation
+tools/build_portable.py  builds the portable Windows bundle (no installation needed)
+.github/workflows/       builds and tests that bundle on Windows for every push
 greyzone_rf/
   config.py              configuration loading/validation
   data.py                Excel/CSV reading, checks, eGFR (CKD-EPI 2021), ratios
