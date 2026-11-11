@@ -228,7 +228,9 @@ def annotated_original(results: pd.DataFrame, prepared: PreparedData, bundle: di
         rows = list(range(2, prepared.n + 2))
 
     headers = {str(c.value).strip(): c.column for c in ws[1] if c.value is not None}
-    last = max(headers.values(), default=0)
+    # Start after the last column that holds ANY value (also unnamed columns), so nothing is overwritten.
+    # AI columns that already exist (re-uploaded file) are reused in place.
+    last = max((c.column for row in ws.iter_rows() for c in row if c.value is not None), default=0)
     columns = {}
     for name in ANNOTATION_COLUMNS:
         if name not in headers:

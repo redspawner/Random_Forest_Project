@@ -132,3 +132,27 @@ def test_annotated_original_csv(bundle):
     ws = load_workbook(io.BytesIO(annotated_original(results, prepared, bundle)))["Patients"]
     header = [c.value for c in ws[1]]
     assert header[0] == "patient_id" and "AI decision" in header and ws.max_row == len(new) + 1
+
+
+def test_annotation_never_overwrites_unnamed_columns(bundle):
+    from openpyxl import Workbook, load_workbook
+
+    from greyzone_rf.data import load_patient_file
+    from greyzone_rf.predict import annotated_original
+
+    new, _ = demo_new_patients(4, seed=6)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Patients"
+    ws.append(list(new.columns))
+    for record in new.itertuples(index=False):
+        ws.append([None if pd.isna(v) else v for v in record] + [None, "my comment"])  # unnamed column
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    prepared = load_patient_file(buffer.getvalue(), bundle["config"], filename="x.xlsx")
+    out = load_workbook(io.BytesIO(annotated_original(predict_prepared(bundle, prepared), prepared, bundle)))
+    sheet = out["Patients"]
+    comment_col = len(new.columns) + 2
+    assert sheet.cell(row=2, column=comment_col).value == "my comment"
+    header = [c.value for c in sheet[1]]
+    assert header.index("AI decision") + 1 == comment_col + 1
