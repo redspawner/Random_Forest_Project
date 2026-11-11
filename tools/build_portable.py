@@ -33,8 +33,8 @@ EXCLUDE_TOP = {".github", "tools", "tests", "dist", ".venv", "pytest.ini", "inst
 START_BAT = r"""@echo off
 REM Grey-zone AD triage - portable version. Nothing needs to be installed.
 cd /d "%~dp0app"
-echo Starting the app... your browser will open at http://localhost:8501
-echo Keep this window open while you use the app. Close it to stop.
+echo Grey-zone AD triage - portable version
+echo The browser opens by itself as soon as the app is ready (first start: up to 1 minute).
 "%~dp0python\python.exe" run_app.py
 pause
 """
@@ -51,9 +51,12 @@ README_TXT = """Grey-zone AD triage (Random Forest) - PORTABLE WINDOWS VERSION
 
 1. Extract the whole folder (right-click the .zip -> Extract All). Do not run it from
    inside the zip. A short path such as C:\\GreyZoneTriage works best.
-2. Double-click START_APP.bat. Your browser opens at http://localhost:8501.
+2. Double-click START_APP.bat. Wait for "==> The app is ready: http://127.0.0.1:8501";
+   the browser then opens by itself (first start can take up to a minute).
    (If Windows SmartScreen warns: "More info" -> "Run anyway".)
 3. Keep the black window open while using the app; close it to stop.
+   If it says port 8501 is busy, another copy is still open: it simply uses the next port
+   (or close the other black window / end "python.exe" in Task Manager).
 
 Nothing is installed on the computer and nothing is sent over the internet:
 Python and all libraries are inside the "python" folder.
