@@ -26,6 +26,11 @@ from .data import ckd_epi_2021
 PTAU_BASE, PTAU_AMY, PTAU_BURDEN, PTAU_SD = 0.10, 1.25, 0.35, 0.62
 RATIO_AMY, RATIO_SD = 0.008, 0.0095
 GFAP_AMY, COG_AMY, MTA_AMY = 0.30, 0.8, 0.5
+HTN_PTAU = np.log(1.08)      # hypertension: higher p-tau217 in amyloid-negative people (exploratory finding)
+VASC_PTAU = np.log(1.10)     # stroke / myocardial infarction: higher p-tau217 (Mielke 2022, inconsistent)
+OSA_PTAU = np.log(1 / 1.15)  # sleep apnoea / sleep disorder: lower p-tau217, more false negatives
+AGE_X_AMY = -0.012           # amyloid-positive: younger patients have higher p-tau217 (Palmqvist 2025)
+FEMALE_X_AMY = 0.10          # women with AD pathology have higher p-tau217 (Palmqvist 2025)
 ANEMIA_PTAU = np.log(1.25)   # direct effect; with its link to age/eGFR the observed ratio is ~1.4 as in JAMA Neurol 2026
 EGFR_PTAU = np.log(1.12) / 10     # +12% p-tau217 per 10 mL/min lower eGFR (Lumipulse, Mayo data)
 
@@ -71,10 +76,28 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
     ldl = np.clip(rng_lab.normal(118, 35, n), 30, 300)
     hdl = np.clip(rng_lab.normal(52 + 7 * female - 0.9 * (bmi - 26.5), 13, n), 20, 120)
 
+    # Routine consultation: vital signs, known diagnoses / medication, clinical stage (separate stream).
+    rng_cl = np.random.default_rng(seed + 104729)
+    hypertension = (rng_cl.random(n) < _sigmoid(-0.2 + 0.05 * (age - 71) + 0.06 * (bmi - 26.5)
+                                                 + 0.8 * diabetes)).astype(int)
+    systolic = np.clip(rng_cl.normal(126 + 10 * hypertension + 0.3 * (age - 71), 15), 85, 210)
+    diastolic = np.clip(rng_cl.normal(75 + 4 * hypertension - 0.1 * (age - 71), 9), 45, 120)
+    heart_rate = np.clip(rng_cl.normal(71, 11, n), 40, 130)
+    diabetes_known = diabetes * (rng_cl.random(n) < 0.85)
+    stroke = (rng_cl.random(n) < _sigmoid(-3.1 + 0.05 * (age - 71) + 0.8 * hypertension
+                                          + 0.5 * diabetes)).astype(int)
+    cvd = (rng_cl.random(n) < _sigmoid(-2.5 + 0.05 * (age - 71) + 0.7 * hypertension + 0.5 * diabetes
+                                       + 0.5 * (1 - female))).astype(int)
+    osa = (rng_cl.random(n) < _sigmoid(-2.3 + 0.12 * (bmi - 26.5) + 0.6 * (1 - female))).astype(int)
+    weight_loss = (rng_cl.random(n) < _sigmoid(-2.7 + 1.0 * amyloid * (burden > 0.8) + 0.6 * non_ad)).astype(int)
+    atypical = (rng_cl.random(n) < 0.03).astype(int)
+
     ptau_noise = rng.normal(0, PTAU_SD, n)   # biological + analytical variation shared by p-tau isoforms
     ln_ptau217 = (np.log(PTAU_BASE) + PTAU_AMY * amyloid + PTAU_BURDEN * burden + 0.010 * (age - 71)
                   + EGFR_PTAU * renal - 0.030 * (bmi - 26.5) - 0.15 * np.log(tg / 125)
-                  + ANEMIA_PTAU * anemia + ptau_noise)
+                  + ANEMIA_PTAU * anemia + ptau_noise
+                  + AGE_X_AMY * (age - 71) * amyloid + FEMALE_X_AMY * female * amyloid
+                  + HTN_PTAU * hypertension + VASC_PTAU * (stroke + cvd) + OSA_PTAU * osa)
     ln_ptau181 = (np.log(1.3) + 0.30 * amyloid + 0.15 * burden + 0.008 * renal
                   + 0.6 * ptau_noise + rng.normal(0, 0.35, n))
     ab40 = np.clip(rng.normal(300 + 1.2 * renal, 45, n), 120, 700)
@@ -87,10 +110,12 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
 
     impairment = amyloid * np.clip(burden + 0.3, 0, None) * COG_AMY + 0.5 * non_ad
     moca = np.clip(np.round(26.5 + 0.18 * (education - 8) - 0.06 * (age - 71)
-                            - 2.6 * impairment - 0.5 * diabetes + rng.normal(0, 2.0, n)), 0, 30)
+                            - 2.6 * impairment - 0.5 * diabetes - 1.0 * stroke + rng.normal(0, 2.0, n)), 0, 30)
+    severity = impairment + 0.5 * non_ad + 0.4 * stroke + rng_cl.normal(0, 0.35, n)
+    stage = np.select([severity < 0.8, severity < 1.5], [0, 1], 2)   # 0 SCD, 1 MCI, 2 dementia
     mta = np.clip(np.round(0.8 + 0.06 * (age - 71) + MTA_AMY * amyloid * (burden + 0.4)
                            + 0.3 * non_ad + rng.normal(0, 0.6, n)), 0, 4)
-    fazekas = np.clip(np.round(1.0 + 0.04 * (age - 71) + 0.012 * renal + 0.3 * non_ad + 0.3 * diabetes
+    fazekas = np.clip(np.round(1.0 + 0.04 * (age - 71) + 0.012 * renal + 0.3 * non_ad + 0.3 * diabetes + 0.5 * stroke + 0.2 * cvd
                                + 0.003 * (ldl - 118) - 0.005 * (hdl - 55) + rng.normal(0, 0.7, n)), 0, 3)
 
     return pd.DataFrame({
@@ -105,6 +130,17 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
         "glucose": np.round(glucose).astype(int),
         "ldl": np.round(ldl).astype(int),
         "hdl": np.round(hdl).astype(int),
+        "systolic_bp": np.round(systolic).astype(int),
+        "diastolic_bp": np.round(diastolic).astype(int),
+        "heart_rate": np.round(heart_rate).astype(int),
+        "hypertension": hypertension,
+        "diabetes": diabetes_known.astype(int),
+        "stroke": stroke,
+        "cardiovascular_disease": cvd,
+        "sleep_apnea": osa,
+        "weight_loss": weight_loss,
+        "clinical_stage": np.array(["SCD", "MCI", "Dementia"])[stage],
+        "atypical_features": atypical,
         "ptau217": np.round(np.exp(ln_ptau217), 3),
         "ptau181": np.round(np.exp(ln_ptau181), 2),
         "ab42": np.round(ab42, 1),
@@ -121,7 +157,9 @@ def simulate_memory_clinic(n: int, seed: int = 0) -> pd.DataFrame:
 
 MISSING_RATES = {
     "education_years": 0.05, "bmi": 0.05, "triglycerides": 0.10, "hemoglobin": 0.05, "glucose": 0.08,
-    "ldl": 0.15, "hdl": 0.15, "ptau181": 0.10,
+    "ldl": 0.15, "hdl": 0.15, "systolic_bp": 0.05, "diastolic_bp": 0.05, "heart_rate": 0.05,
+    "hypertension": 0.03, "diabetes": 0.03, "stroke": 0.03, "cardiovascular_disease": 0.03,
+    "sleep_apnea": 0.05, "weight_loss": 0.08, "clinical_stage": 0.02, "ptau181": 0.10,
     "gfap": 0.08, "nfl": 0.08, "apoe4": 0.30, "moca": 0.05, "mta_score": 0.15, "fazekas": 0.15,
 }
 

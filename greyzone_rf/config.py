@@ -14,7 +14,7 @@ import yaml
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
-FEATURE_TYPES = {"numeric", "sex", "apoe4", "binary"}
+FEATURE_TYPES = {"numeric", "sex", "apoe4", "binary", "stage"}
 RATIO_PATTERN = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*/\s*([A-Za-z_][A-Za-z0-9_]*)\s*$")
 
 
@@ -109,6 +109,9 @@ def validate_config(cfg: dict) -> None:
         specs.append(spec)
 
     names = {spec.name for spec in specs}
+    for flag in dec.get("red_flags", []) or []:
+        if flag not in names:
+            raise ConfigError(f"config.yaml: red flag '{flag}' is not defined under features")
     if "ptau217" not in names:
         raise ConfigError("config.yaml: a feature named 'ptau217' is required (it defines the grey zone)")
     for spec in specs:

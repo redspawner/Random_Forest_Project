@@ -66,6 +66,7 @@ def build_template(cfg: dict) -> bytes:
     validations = {
         "sex": ('"M,F"', "Use M (male) or F (female)"),
         cfg["columns"]["label"]: ('"Positive,Negative"', "Positive or Negative"),
+        "clinical_stage": ('"SCD,MCI,Dementia"', "SCD, MCI or Dementia"),
     }
     for name, (formula, prompt) in validations.items():
         if name in names:

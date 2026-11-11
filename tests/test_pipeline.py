@@ -156,3 +156,14 @@ def test_annotation_never_overwrites_unnamed_columns(bundle):
     assert sheet.cell(row=2, column=comment_col).value == "my comment"
     header = [c.value for c in sheet[1]]
     assert header.index("AI decision") + 1 == comment_col + 1
+
+
+def test_red_flag_blocks_classification(bundle):
+    new, _ = demo_new_patients(6, seed=8)
+    new = new[new["patient_id"].str.match(r"NEW-\d")].copy()
+    new["atypical_features"] = 0
+    new.loc[new.index[0], "atypical_features"] = 1
+    results = predict_prepared(bundle, prepare_table(new, bundle["config"]))
+    first = results.iloc[0]
+    assert first["decision"].startswith("INCONCLUSIVE") and "Red flag" in first["explanation"]
+    assert not results.iloc[1:]["explanation"].str.contains("Red flag").any()

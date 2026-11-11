@@ -192,7 +192,29 @@ def parse_apoe4(value: Any) -> tuple[float, str | None, str | None]:
     return np.nan, None, f"invalid APOE value '{value}' (use 0/1/2 or e.g. E3/E4)"
 
 
-PARSERS = {"numeric": parse_number, "sex": parse_sex, "binary": parse_binary, "apoe4": parse_apoe4}
+STAGE_VALUES = {
+    "scd": 0, "subjectivecognitivedecline": 0, "subjective": 0, "dcs": 0, "declinio cognitivo subjetivo": 0,
+    "mci": 1, "mildcognitiveimpairment": 1, "dcl": 1, "defice cognitivo ligeiro": 1, "deficecognitivoligeiro": 1,
+    "dementia": 2, "demencia": 2, "mild dementia": 2, "milddementia": 2, "ad dementia": 2,
+}
+
+
+def parse_stage(value: Any) -> tuple[float, str | None, str | None]:
+    """Clinical stage: 0 = SCD (subjective decline), 1 = MCI, 2 = dementia."""
+    if _is_blank(value):
+        return np.nan, None, None
+    if isinstance(value, (int, float, np.integer, np.floating)) and not isinstance(value, bool):
+        if float(value) in (0.0, 1.0, 2.0):
+            return float(value), None, None
+        return np.nan, None, f"invalid clinical stage '{value}' (SCD, MCI or Dementia)"
+    key = _text_key(value).replace("-", "")
+    if key in STAGE_VALUES:
+        return float(STAGE_VALUES[key]), None, None
+    return np.nan, None, f"invalid clinical stage '{value}' (SCD, MCI or Dementia)"
+
+
+PARSERS = {"numeric": parse_number, "sex": parse_sex, "binary": parse_binary, "apoe4": parse_apoe4,
+           "stage": parse_stage}
 
 
 def parse_label(value: Any) -> float:

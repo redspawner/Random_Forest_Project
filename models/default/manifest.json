@@ -1,11 +1,11 @@
 {
-  "trained": "2026-11-11T16:28:57",
+  "trained": "2026-11-11T16:51:24",
   "training_file": "data/default_training/synthetic_training_dataset.xlsx",
-  "training_file_sha256": "2f971167105fd38bfbcc98f272ce31557ade4f79288ec488ce04d2b2a9a18ac7",
+  "training_file_sha256": "453990939ed4e448aff03b1499dfc4c62fad4e5a29ef0a4117f3f1a19c49b3f0",
   "rows_in_file": 600,
   "training_patients": 600,
   "thresholds": {
-    "positive": 0.78,
+    "positive": 0.82,
     "negative": 0.25
   },
   "features": [
@@ -17,21 +17,23 @@
     "triglycerides",
     "hemoglobin",
     "anemia",
-    "glucose",
     "ldl",
     "hdl",
     "ptau217",
     "ptau181",
-    "ab42",
-    "ab40",
     "ab42_ab40_ratio",
     "ptau217_ab42_ratio",
     "gfap",
-    "nfl",
     "apoe4",
+    "hypertension",
+    "diabetes",
+    "stroke",
+    "cardiovascular_disease",
+    "sleep_apnea",
+    "weight_loss",
+    "clinical_stage",
     "moca",
-    "mta_score",
-    "fazekas"
+    "mta_score"
   ],
   "versions": {
     "python": "3.13.18",
@@ -39,5 +41,5 @@
     "numpy": "2.5.4",
     "pandas": "3.1.1"
   },
-  "written": "2026-11-11T16:28:58"
+  "written": "2026-11-11T16:51:25"
 }

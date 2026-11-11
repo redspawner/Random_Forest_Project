@@ -189,7 +189,12 @@ Download `templates/patient_data_template.xlsx` (or use the button in the app). 
 | `apoe4` | 0/1/2 or `E3/E4` | number of ε4 alleles |
 | `moca` | 0–30 | |
 | `mta_score` | 0–4 | Scheltens MTA, worse side |
-| `fazekas` | 0–3 | |
+| `fazekas` | 0–3 | read, but not used by the model (see below) |
+| `systolic_bp`, `diastolic_bp`, `heart_rate` | mmHg, bpm | vital signs from the visit (read, not used by the model) |
+| `hypertension`, `diabetes` | yes/no | known diagnosis **or** on medication |
+| `stroke`, `cardiovascular_disease`, `sleep_apnea`, `weight_loss` | yes/no | stroke/TIA; MI/coronary disease/heart failure; known OSA; recent unintentional weight loss |
+| `clinical_stage` | SCD / MCI / Dementia | Portuguese also accepted (DCL, Demência) |
+| `atypical_features` | yes/no | **red flag**: rapid progression, motor-neuron disease, prion suspicion, prominent parkinsonism, frontotemporal syndrome or possible NPH. If yes, the model is not applied (INCONCLUSIVE → LP/PET) |
 | `lp_result` | Positive / Negative | **training file only** (leave blank or delete for new patients) |
 
 The reader is forgiving and records every correction in the output:
@@ -200,10 +205,25 @@ The reader is forgiving and records every correction in the output:
 - Implausible values (e.g. MoCA = 34, eGFR = 900) are **never silently changed**. When classifying, that patient gets **CHECK DATA** and is not classified. During training, the value is treated as missing and a warning is shown.
 - Patients with p-tau217 outside the grey zone get **NOT APPLICABLE**, together with their Stage-1 result. The model was trained only on grey-zone patients, so it must not extrapolate.
 - Patients missing more than 50 % of the model variables stay **INCONCLUSIVE**.
+- Patients with a **red flag** (`decision.red_flags` in `config.yaml`, by default `atypical_features`) stay **INCONCLUSIVE**. This follows the guidance that atypical presentations need CSF/PET confirmation whatever the plasma result.
+- Yes/no columns accept yes/no, sim/não, 1/0 and true/false.
 - Columns that are not defined in `config.yaml` are ignored and listed. This applies to any column, so a hospital record number can never become a model variable by accident.
 
 **Adding a new variable** (e.g. homocysteine) needs no code. Add a block under `features:` in
 `config.yaml` (name, unit, plausible min/max), add the column to the Excel file, and retrain.
+
+### Which variables the model uses (and why some were removed)
+
+Thirty-three candidate variables were tested with a leave-one-variable-out analysis
+(`python analyze_variables.py <training file>`). Each variable is removed in turn, the same
+cross-validation is re-run, and the change in AUC and in lumbar punctures avoided is compared
+with the run-to-run noise. After deciding variable by variable, 8 are read but **not used by the
+model**: raw Aβ42, raw Aβ40, NfL, heart rate, systolic and diastolic BP, fasting glucose and
+Fazekas (`use_as_feature: false`). The model uses **25 variables**. The full table and the
+before/after results are in [`docs/VARIABLE_ANALYSIS.md`](docs/VARIABLE_ANALYSIS.md).
+
+**Re-run the analysis on real data**: the synthetic data were built with some of these variables
+having no effect, so on synthetic data the analysis partly confirms the simulation.
 
 ### Why these blood-panel variables
 
@@ -311,6 +331,8 @@ predict.py               command-line prediction → <file>_results.xlsx
 make_demo_data.py        template, demo files, default dataset (+ DATASET_CARD.md)
 requirements-pinned.txt  exact library versions of the shipped model
 docs/PROJECT_GUIDE.md    step-by-step guide to the whole project
+docs/VARIABLE_ANALYSIS.md which variables help / were removed
+analyze_variables.py     leave-one-variable-out analysis on any training file
 install.bat / .sh        one-click installation
 greyzone_rf/
   config.py              configuration loading/validation

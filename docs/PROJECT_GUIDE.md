@@ -240,6 +240,37 @@ range seen in training".
 - **Lesson:** add a variable only if it is likely to carry information. With real data, check its
   permutation importance and the nested results with and without it.
 
+## Step 12c - Routine clinical variables, red flags and variable selection
+
+- **What was added:**
+  - vital signs (blood pressure, heart rate);
+  - known or medicated hypertension and diabetes;
+  - stroke/TIA, cardiovascular disease, sleep apnoea, weight loss;
+  - clinical stage (SCD/MCI/dementia);
+  - a **red-flag** column for atypical presentations.
+- **Why:** these are all recorded in a routine consultation. A literature summary you provided
+  (VeraHealth) lists them as modifiers of p-tau217 or of its accuracy:
+  - higher p-tau217 with stroke/MI;
+  - lower p-tau217 and more false negatives with sleep apnoea and in mild stages;
+  - women with AD pathology have higher values;
+  - age changes the relation differently in amyloid-positive and amyloid-negative patients.
+- **How the simulation uses them:**
+  - These effects were added in the directions reported. Their sizes are assumptions.
+  - Following the Italian 2026 position paper, atypical presentations are never classified:
+    `decision.red_flags` makes them INCONCLUSIVE.
+- **Selection:** a leave-one-variable-out analysis (`analyze_variables.py`,
+  `greyzone_rf/ablation.py`) removed each variable in turn. Results were averaged over seeds and
+  compared with run-to-run noise. You then decided **variable by variable**:
+  - **Removed (8):** raw Aβ42, raw Aβ40, NfL, heart rate, systolic/diastolic BP, glucose, Fazekas.
+  - **Kept** on literature grounds, even where no benefit could be measured: the p-tau217/Aβ42
+    ratio, hypertension, diabetes, stroke, cardiovascular disease, education and LDL.
+- **Result:**
+  - AUC rose from 0.944 to 0.950, and the final model can certify POSITIVE calls again.
+  - In honest nested validation, LPs avoided went from 39 % to 34 %, with 5 wrong calls in both.
+    None of the outer folds (480 patients each) could certify POSITIVE.
+  - The rule-in side is at the limit of what about 500 patients can prove. See
+    `docs/VARIABLE_ANALYSIS.md`.
+
 ## Step 13 - Sample-size experiments
 
 I trained the procedure on synthetic cohorts of different sizes, then checked the chosen
@@ -276,7 +307,7 @@ meaningful share of LPs.
 
 ## Step 15 - Quality assurance
 
-- **25 automated tests** (`python -m pytest`) cover:
+- **27 automated tests** (`python -m pytest`) cover:
   - the statistics, e.g. the rule-of-three value 59;
   - file parsing (decimal commas, aliases, semicolon CSVs, impossible values, eGFR);
   - the full train→predict pipeline;

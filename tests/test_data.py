@@ -105,3 +105,12 @@ def test_anemia_computed_from_hemoglobin_and_sex(cfg):
     p = prepare_table(df, cfg)
     assert list(p.table["anemia"][:4]) == [1, 0, 1, 0]
     assert np.isnan(p.table["anemia"][4])          # sex unknown -> not computed
+
+
+def test_clinical_stage_and_yes_no_parsing(cfg):
+    df = pd.DataFrame({"ptau217": [0.2] * 4, "clinical_stage": ["SCD", "DCL", "Demência", "MCI"],
+                       "HTA": ["sim", "não", 1, 0], "SAOS": ["yes", "no", None, "1"]})
+    p = prepare_table(df, cfg)
+    assert list(p.table["clinical_stage"]) == [0, 1, 2, 1]
+    assert list(p.table["hypertension"]) == [1, 0, 1, 0]
+    assert p.table["sleep_apnea"].tolist()[:2] == [1, 0] and np.isnan(p.table["sleep_apnea"][2])

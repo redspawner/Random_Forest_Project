@@ -59,6 +59,11 @@ decision:
   # Patients missing more than this fraction of the model variables are not
   # classified by the model (INCONCLUSIVE - insufficient data).
   max_missing_fraction: 0.5
+  # Red flags: if any of these columns is 1/yes, the model is NOT applied and the patient is
+  # referred (INCONCLUSIVE). Guidance: atypical presentations (rapid progression, motor-neuron
+  # disease, suspected prion disease, prominent parkinsonism, frontotemporal syndrome, possible
+  # NPH) need CSF/PET confirmation regardless of plasma results.
+  red_flags: [atypical_features]
 
 validation:
   cv_folds: 5               # stratified K-fold cross-validation
@@ -176,6 +181,7 @@ features:
     aliases: [anemia_who, anaemia]
 
   - name: glucose
+    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
     description: Fasting plasma glucose (diabetes / insulin resistance)
     unit: mg/dL
     min: 30
@@ -217,6 +223,7 @@ features:
     aliases: [p_tau181, plasma_ptau181]
 
   - name: ab42
+    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
     description: Plasma amyloid-beta 42
     unit: pg/mL
     min: 0.1
@@ -225,6 +232,7 @@ features:
     aliases: [abeta42, amyloid_beta_42, ab1_42, abeta_42]
 
   - name: ab40
+    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
     description: Plasma amyloid-beta 40
     unit: pg/mL
     min: 1
@@ -255,6 +263,7 @@ features:
     aliases: [plasma_gfap]
 
   - name: nfl
+    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
     description: Plasma neurofilament light chain
     unit: pg/mL
     min: 0.5
@@ -268,6 +277,91 @@ features:
     unit: alleles
     example: E3/E4
     aliases: [apoe, apoe_genotype, apoe_e4]
+
+  # --- Routine consultation: vital signs, diagnoses and medication known to the clinician ---
+  - name: systolic_bp
+    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
+    description: Systolic blood pressure at the visit
+    unit: mmHg
+    min: 60
+    max: 260
+    example: 138
+    aliases: [sbp, pas, tensao_sistolica, pressao_sistolica, systolic]
+
+  - name: diastolic_bp
+    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
+    description: Diastolic blood pressure at the visit
+    unit: mmHg
+    min: 30
+    max: 160
+    example: 78
+    aliases: [dbp, pad, tensao_diastolica, pressao_diastolica, diastolic]
+
+  - name: heart_rate
+    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
+    description: Heart rate at the visit
+    unit: bpm
+    min: 25
+    max: 220
+    example: 72
+    aliases: [hr, fc, frequencia_cardiaca, pulse, pulso]
+
+  - name: hypertension
+    type: binary
+    description: Known hypertension (diagnosis or antihypertensive medication), yes/no
+    unit: 0/1
+    example: 1
+    aliases: [hta, hipertensao, arterial_hypertension, antihypertensive]
+
+  - name: diabetes
+    type: binary
+    description: Known diabetes (diagnosis or glucose-lowering medication), yes/no
+    unit: 0/1
+    example: 0
+    aliases: [dm, diabetes_mellitus]
+
+  - name: stroke
+    type: binary
+    description: History of stroke or TIA, yes/no
+    unit: 0/1
+    example: 0
+    aliases: [avc, stroke_tia, ait]
+
+  - name: cardiovascular_disease
+    type: binary
+    description: Myocardial infarction, coronary disease or heart failure, yes/no
+    unit: 0/1
+    example: 0
+    aliases: [cvd, mi, enfarte, doenca_cardiovascular, coronary_disease]
+
+  - name: sleep_apnea
+    type: binary
+    description: Known obstructive sleep apnoea, yes/no
+    unit: 0/1
+    example: 0
+    aliases: [osa, saos, apneia_sono, obstructive_sleep_apnea]
+
+  - name: weight_loss
+    type: binary
+    description: Recent unintentional weight loss, yes/no
+    unit: 0/1
+    example: 0
+    aliases: [perda_peso, emagrecimento]
+
+  - name: clinical_stage
+    type: stage
+    description: Clinical stage - SCD (subjective decline), MCI or Dementia
+    unit: SCD/MCI/Dementia
+    example: MCI
+    aliases: [stage, estadio, estadio_clinico, syndrome, diagnostic_stage]
+
+  - name: atypical_features
+    type: binary
+    description: RED FLAG - rapid progression, motor-neuron disease, prion suspicion, prominent parkinsonism, frontotemporal syndrome or possible NPH (yes -> not classified, refer)
+    unit: 0/1
+    example: 0
+    use_as_feature: false
+    aliases: [red_flag, atypical, sinais_atipicos]
 
   - name: moca
     description: Montreal Cognitive Assessment total score
@@ -286,6 +380,7 @@ features:
     aliases: [mta, scheltens]
 
   - name: fazekas
+    use_as_feature: false   # removed after the variable analysis (docs/VARIABLE_ANALYSIS.md); still read and checked
     description: MRI white-matter hyperintensities, Fazekas scale
     unit: 0-3
     min: 0

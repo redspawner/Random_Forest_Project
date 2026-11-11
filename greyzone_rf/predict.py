@@ -52,6 +52,8 @@ def predict_prepared(bundle: dict, prepared: PreparedData) -> pd.DataFrame:
     codes = apply_thresholds(np.nan_to_num(scores, nan=0.5), thresholds["positive"], thresholds["negative"])
 
     ranges = bundle.get("training_ranges", {})
+    red_flags = [c for c in cfg["decision"].get("red_flags", []) if c in prepared.table.columns]
+    flagged = [[c for c in red_flags if prepared.table[c].iloc[i] == 1] for i in range(prepared.n)]
     rows = []
     for i in range(prepared.n):
         issues = prepared.row_issues[i]
@@ -67,6 +69,10 @@ def predict_prepared(bundle: dict, prepared: PreparedData) -> pd.DataFrame:
             reason = (f"p-tau217 = {ptau[i]:g} pg/mL is outside the grey zone "
                       f"[{gz['ptau217_lower']}-{gz['ptau217_upper']}]: Stage-1 result is {stage1}. "
                       "The model was trained only on grey-zone patients and was not applied.")
+        elif flagged[i]:
+            decision = INCONCLUSIVE_TXT
+            reason = ("Red flag present (" + ", ".join(flagged[i]) + "): atypical presentation, plasma "
+                      "p-tau217 is not reliable here. The model was not applied. Refer to lumbar puncture / PET.")
         elif miss[i] > max_missing:
             decision = INCONCLUSIVE_TXT
             reason = (f"Insufficient data: {miss[i]:.0%} of the model variables are missing "

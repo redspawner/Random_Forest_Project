@@ -103,6 +103,21 @@ def write_dataset_card(path: Path, data_file: Path, df: pd.DataFrame, cfg: dict)
         "11. Enhancing diagnostic precision in Alzheimer's disease: impact of comorbidities on blood biomarkers. "
         "https://zenodo.org/records/17814411 (plasma biomarkers associated with eGFR, homocysteine and HDL).",
         "",
+        "Clinical-variable effects follow a literature summary provided by the user (VeraHealth); its DOIs "
+        "were not opened from the build environment and should be checked:",
+        "",
+        "12. Mielke et al., *Nature Medicine* 2022, https://doi.org/10.1038/s41591-022-01822-2 (chronic kidney "
+        "disease, myocardial infarction and stroke associated with higher p-tau217).",
+        "13. Palmqvist et al., *Nature Medicine* 2025, https://doi.org/10.1038/s41591-025-03622-w (age and sex "
+        "modify p-tau217: women with AD pathology higher; amyloid-positive younger patients higher).",
+        "14. Shir et al., *Neurology* 2026, https://doi.org/10.1212/wnl.0000000000218591 (sleep apnoea, higher "
+        "BMI and milder clinical stage associated with false-negative p-tau217).",
+        "15. Italian joint position paper (SIN, SIBioC, SINdem), *Neurological Sciences* 2026, "
+        "https://doi.org/10.1007/s10072-026-08931-7 (interpret by pretest probability, age, kidney function, "
+        "phenotype; atypical presentations need CSF/PET confirmation -> red-flag rule).",
+        "16. Martino-Adami et al., *Nature Communications* 2026, https://doi.org/10.1038/s41467-026-76434-2 "
+        "(APOE e4, lower BMI and lower eGFR affect p-tau217).",
+        "",
         "The values above were taken from abstracts/search summaries of these papers (the full texts could not be "
         "opened from the build environment). Check them in the original articles before citing.",
         "",
@@ -118,6 +133,11 @@ def write_dataset_card(path: Path, data_file: Path, df: pd.DataFrame, cfg: dict)
         "simulation (evidence is mixed/null); they only act through vascular damage (Fazekas) and diabetes on MoCA. "
         "Anaemia raises p-tau217 by 25% directly; with its link to age and kidney function, the observed difference "
         "matches the published 1.40 cut-off ratio.",
+        "- Clinical variables: hypertension ~49%, known diabetes ~15%, stroke ~8%, cardiovascular disease ~15%, "
+        "sleep apnoea ~13%, weight loss ~13%, red-flag atypical features 3%; SCD/MCI/dementia ~40/28/32%. "
+        "Effect sizes on p-tau217 are ASSUMED (directions from sources 12-14): hypertension +8%, stroke or "
+        "cardiovascular disease +10% each, sleep apnoea -13%, amyloid-positive women +10%, amyloid-positive "
+        "p-tau217 decreasing 1.2% per year of age. Vital signs (blood pressure, heart rate) have no direct effect.",
         "- The simulation is cleaner than reality, so the model performs better on it than it will on real data.",
         "",
         "## Real datasets with these variables (access on application)",
