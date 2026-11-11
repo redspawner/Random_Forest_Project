@@ -199,10 +199,12 @@ def show_predictions(upload, bundle: dict) -> None:
 # ---------------------------------------------------------------------------
 with tab_predict:
     st.header("Classify new grey-zone patients")
+    _dec = (bundle or {}).get("config", load_config())["decision"]
     st.write("Drag and drop an Excel (.xlsx) or CSV file with one row per patient, in the layout of the template "
              "(see *Template & help*). Each patient is classified as **POSITIVE**, **NEGATIVE** or "
              "**INCONCLUSIVE - refer to LP**. A definite answer is only given when the model has demonstrated "
-             "at least 95% PPV/NPV for patients with that score; everybody else stays inconclusive.")
+             f"at least {_dec['target_ppv']:.0%} PPV / {_dec['target_npv']:.0%} NPV for patients with that score; "
+             "everybody else stays inconclusive.")
     if bundle is None:
         st.warning("No trained model available. Go to **Train model** first "
                    "(the synthetic demo file can be used to try the tool).")
@@ -219,7 +221,7 @@ with tab_train:
     st.header("Train a new model")
     st.write("Drag and drop the **training file**: grey-zone patients with their variables **and** the "
              "lumbar-puncture result in the column `lp_result` (Positive/Negative). Settings (grey-zone cut-offs, "
-             "95% targets, Random-Forest parameters, list of variables) are read from `config.yaml`.")
+             "PPV/NPV targets, Random-Forest parameters, list of variables) are read from `config.yaml`.")
     cfg_now = load_config()
     train_upload = st.file_uploader("Drag and drop the training file here", type=["xlsx", "xlsm", "csv"],
                                     key="train_upload")
@@ -318,7 +320,7 @@ with tab_help:
    them). The tool then finds the lowest score above which at least {dec['target_ppv']:.0%} of patients were
    LP-positive (PPV) and the highest score below which at least {dec['target_npv']:.0%} were LP-negative (NPV).
    {"It requires the **lower bound of the one-sided " + format(dec['confidence_level'], '.0%') +
-    " confidence interval** to reach the target, so the 95% is demonstrated statistically, not just observed."
+    " confidence interval** to reach the target, so the target is demonstrated statistically, not just observed."
     if dec['use_confidence_bound'] else "Only the point estimate must reach the target (exploratory mode)."}
 4. **Everything in between stays INCONCLUSIVE** and is referred to lumbar puncture, exactly as before.
 5. **Safety checks:** patients outside the grey zone are not classified by the model; implausible values

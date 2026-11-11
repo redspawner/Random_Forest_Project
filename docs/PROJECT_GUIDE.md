@@ -17,7 +17,7 @@ two cut-offs:
 **Goal:** for grey-zone patients, use the other information available **before** the LP (blood
 tests, clinical data, MRI) to give a definite answer to part of them, so they can avoid the LP.
 
-**Hard constraint:** an answer may only be given with at least **95 % confidence**. Everyone
+**Hard constraint:** an answer may only be given with at least **90 % PPV/NPV, proven with 95 % confidence** (originally 95 %; see Step 12e). Everyone
 else stays inconclusive and has the LP, exactly as today.
 
 This translates into a **supervised binary classification** problem:
@@ -305,6 +305,26 @@ range seen in training".
   - In the thesis this is a result, not a failure. It quantifies how much evidence a 95 %
     guarantee requires. It argues for pooled cohorts, an extra independent marker, or an
     explicitly lower target.
+
+## Step 12e - Target lowered to 90 % PPV / 90 % NPV
+
+- **What:** `target_ppv` and `target_npv` were set to 0.90 in `config.yaml`. The 95 % one-sided
+  confidence bound is still required, and the compact 10-variable model without p-tau181/GFAP is
+  unchanged.
+- **Why:**
+  - 95 %/95 % could certify nothing with 600 realistic patients.
+  - 90 % matches the guideline level for a blood test that replaces CSF/PET.
+  - CSF itself agrees with PET in only about 90–93 % of cases.
+  - Positive calls are confirmed before treatment anyway.
+- **Result on the default dataset:**
+  - Thresholds: POSITIVE if score ≥ 0.76, NEGATIVE if score ≤ 0.18.
+  - Honest nested validation: 38 % of LPs avoided, 17 wrong calls in 600 (1 false positive,
+    16 false negatives).
+  - On 6,000 independent synthetic patients: 53 % avoided, PPV 92.8 %, NPV 95.6 %. Both 95 %
+    confidence intervals are above 90 %.
+- **Note:** most errors are false NEGATIVES. This fits the literature, which reports that false
+  negatives are more common than false positives in mild disease. Clinical follow-up and repeat
+  testing of NEGATIVE calls is therefore advisable.
 
 ## Step 13 - Sample-size experiments
 

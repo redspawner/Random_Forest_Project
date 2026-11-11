@@ -1,5 +1,5 @@
 {
-  "created": "2026-11-11T17:19:59",
+  "created": "2026-11-11T17:47:52",
   "source_file": "synthetic_training_dataset.xlsx",
   "cohort": {
     "rows_in_file": 600,
@@ -49,170 +49,186 @@
     ]
   },
   "thresholds": {
-    "positive": null,
-    "negative": null
+    "positive": 0.76,
+    "negative": 0.18
   },
   "threshold_details": {
-    "positive": null,
-    "negative": null
+    "positive": {
+      "threshold": 0.76,
+      "n_called": 89,
+      "n_correct": 85,
+      "n_wrong": 4,
+      "predictive_value": 0.9550561797752809,
+      "lower_bound": 0.9001012813273073,
+      "passes": true
+    },
+    "negative": {
+      "threshold": 0.18,
+      "n_called": 236,
+      "n_correct": 221,
+      "n_wrong": 15,
+      "predictive_value": 0.9364406779661016,
+      "lower_bound": 0.9038154506004809,
+      "passes": true
+    }
   },
   "oof_triage": {
     "n": 600,
     "n_lp_positive": 218,
     "n_lp_negative": 382,
-    "called_positive": 0,
-    "called_negative": 0,
-    "inconclusive": 600,
-    "true_positive": 0,
-    "false_positive": 0,
-    "true_negative": 0,
-    "false_negative": 0,
+    "called_positive": 89,
+    "called_negative": 236,
+    "inconclusive": 275,
+    "true_positive": 85,
+    "false_positive": 4,
+    "true_negative": 221,
+    "false_negative": 15,
     "ppv": {
-      "k": 0,
-      "n": 0,
-      "value": NaN,
+      "k": 85,
+      "n": 89,
+      "value": 0.9550561797752809,
       "ci": [
-        NaN,
-        NaN
+        0.888908002752601,
+        0.9876204223819782
       ]
     },
     "npv": {
-      "k": 0,
-      "n": 0,
-      "value": NaN,
+      "k": 221,
+      "n": 236,
+      "value": 0.9364406779661016,
       "ci": [
-        NaN,
-        NaN
+        0.8973346265579679,
+        0.963993209458893
       ]
     },
     "resolved": {
-      "k": 0,
+      "k": 325,
       "n": 600,
-      "value": 0.0,
+      "value": 0.5416666666666666,
       "ci": [
-        0.0,
-        0.006129271330669258
+        0.500842918224961,
+        0.5820784045549974
       ]
     },
     "accuracy_resolved": {
-      "k": 0,
-      "n": 0,
-      "value": NaN,
+      "k": 306,
+      "n": 325,
+      "value": 0.9415384615384615,
       "ci": [
-        NaN,
-        NaN
+        0.9102082721816321,
+        0.9644390112173632
       ]
     },
     "positives_ruled_in": {
-      "k": 0,
+      "k": 85,
       "n": 218,
-      "value": 0.0,
+      "value": 0.38990825688073394,
       "ci": [
-        0.0,
-        0.016779101523217443
+        0.324768238593235,
+        0.4580857276442762
       ]
     },
     "negatives_ruled_out": {
-      "k": 0,
+      "k": 221,
       "n": 382,
-      "value": 0.0,
+      "value": 0.5785340314136126,
       "ci": [
-        0.0,
-        0.009610275788286627
+        0.5272583308918866,
+        0.628583231883733
       ]
     },
-    "errors": 0
+    "errors": 19
   },
   "nested": {
     "outer_folds": 5,
     "fold_thresholds": [
       {
-        "positive": null,
+        "positive": 0.75,
         "negative": null
       },
       {
         "positive": null,
-        "negative": null
+        "negative": 0.15
       },
       {
         "positive": null,
-        "negative": 0.05
+        "negative": 0.19
       },
       {
-        "positive": null,
-        "negative": null
+        "positive": 0.87,
+        "negative": 0.23
       },
       {
-        "positive": null,
-        "negative": null
+        "positive": 0.87,
+        "negative": 0.17
       }
     ],
     "metrics": {
       "n": 600,
       "n_lp_positive": 218,
       "n_lp_negative": 382,
-      "called_positive": 0,
-      "called_negative": 19,
-      "inconclusive": 581,
-      "true_positive": 0,
-      "false_positive": 0,
-      "true_negative": 18,
-      "false_negative": 1,
+      "called_positive": 35,
+      "called_negative": 191,
+      "inconclusive": 374,
+      "true_positive": 34,
+      "false_positive": 1,
+      "true_negative": 175,
+      "false_negative": 16,
       "ppv": {
-        "k": 0,
-        "n": 0,
-        "value": NaN,
+        "k": 34,
+        "n": 35,
+        "value": 0.9714285714285714,
         "ci": [
-          NaN,
-          NaN
+          0.8508279203435684,
+          0.999276895623662
         ]
       },
       "npv": {
-        "k": 18,
-        "n": 19,
-        "value": 0.9473684210526315,
+        "k": 175,
+        "n": 191,
+        "value": 0.9162303664921466,
         "ci": [
-          0.7397193458047858,
-          0.9986683711958205
+          0.8675274777716685,
+          0.9513599371407675
         ]
       },
       "resolved": {
-        "k": 19,
+        "k": 226,
         "n": 600,
-        "value": 0.03166666666666667,
+        "value": 0.37666666666666665,
         "ci": [
-          0.01917090026733212,
-          0.049010998614013694
+          0.3377515986504159,
+          0.41680219242309857
         ]
       },
       "accuracy_resolved": {
-        "k": 18,
-        "n": 19,
-        "value": 0.9473684210526315,
+        "k": 209,
+        "n": 226,
+        "value": 0.9247787610619469,
         "ci": [
-          0.7397193458047858,
-          0.9986683711958205
+          0.8822940312204054,
+          0.9555721764203714
         ]
       },
       "positives_ruled_in": {
-        "k": 0,
+        "k": 34,
         "n": 218,
-        "value": 0.0,
+        "value": 0.1559633027522936,
         "ci": [
-          0.0,
-          0.016779101523217443
+          0.1104913868066136,
+          0.2110653427392789
         ]
       },
       "negatives_ruled_out": {
-        "k": 18,
+        "k": 175,
         "n": 382,
-        "value": 0.04712041884816754,
+        "value": 0.4581151832460733,
         "ci": [
-          0.028162232493124145,
-          0.0734501046044929
+          0.4073365167949596,
+          0.5095477919081448
         ]
       },
-      "errors": 1
+      "errors": 17
     }
   },
   "importance": [
@@ -268,8 +284,8 @@
     }
   ],
   "decision_rule": {
-    "target_ppv": 0.95,
-    "target_npv": 0.95,
+    "target_ppv": 0.9,
+    "target_npv": 0.9,
     "use_confidence_bound": true,
     "confidence_level": 0.95,
     "min_calls_per_side": 10,
@@ -279,15 +295,12 @@
     ]
   },
   "calls_needed_for_bound": {
-    "0": 59,
-    "1": 93,
-    "2": 124,
-    "3": 153,
-    "4": 181,
-    "5": 208
+    "0": 29,
+    "1": 46,
+    "2": 61,
+    "3": 76,
+    "4": 89,
+    "5": 103
   },
-  "messages": [
-    "No threshold reached the safety target for POSITIVE (rule-in) calls with the current data: the model will never call a patient POSITIVE. More patients are needed.",
-    "No threshold reached the safety target for NEGATIVE (rule-out) calls with the current data: the model will never call a patient NEGATIVE. More patients are needed."
-  ]
+  "messages": []
 }

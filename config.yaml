@@ -4,7 +4,7 @@
 #  Everything a clinician/researcher may want to change lives here, so the
 #  Python code does not need to be edited:
 #    * the Stage-1 plasma p-tau217 grey-zone cut-offs,
-#    * the safety targets (95% PPV / 95% NPV),
+#    * the safety targets (90% PPV / 90% NPV, proven with 95% confidence),
 #    * the validation scheme,
 #    * the Random Forest settings,
 #    * the list of variables (add a new variable = add a block under `features`).
@@ -46,8 +46,12 @@ decision:
   # `target_ppv` of POSITIVE calls were confirmed by lumbar puncture (PPV), and
   # NEGATIVE only if at least `target_npv` of NEGATIVE calls were confirmed (NPV).
   # Everybody else stays INCONCLUSIVE and is referred to lumbar puncture.
-  target_ppv: 0.95
-  target_npv: 0.95
+  # 90% / 90%: the level the 2025 Alzheimer's Association guideline expects of a blood test that
+  # replaces CSF/PET (sensitivity and specificity >= 90%). CSF itself agrees with amyloid PET in
+  # only ~90-93% of cases. With 600 grey-zone patients, 95% / 95% could certify nothing
+  # (see README section 6). Choose the target before looking at new results, and justify it.
+  target_ppv: 0.90
+  target_npv: 0.90
   # true (recommended): the one-sided lower confidence bound (Clopper-Pearson) of
   #   the PPV/NPV must reach the target -> "95% PPV, demonstrated with 95%
   #   statistical confidence". Safe, but needs larger cohorts (see README).

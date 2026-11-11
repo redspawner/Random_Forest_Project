@@ -38,7 +38,8 @@ def test_training_bundle(bundle):
     for side in ("positive", "negative"):
         detail = r["threshold_details"][side]
         if detail is not None:
-            assert detail["lower_bound"] >= 0.95
+            target = bundle["config"]["decision"]["target_ppv" if side == "positive" else "target_npv"]
+            assert detail["lower_bound"] >= target
     assert "Training report" in markdown_report(bundle)
 
 

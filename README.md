@@ -11,8 +11,8 @@ safely**.
    > 0.43 pg/mL   → POSITIVE           (model not applied)
    0.14 – 0.43    → GREY ZONE ──► Stage 2: Random Forest on blood + clinical + MRI variables
                                        │
-                                       ├─ score ≥ T_pos → POSITIVE   (PPV ≥ 95 %, proven with 95 % confidence)
-                                       ├─ score ≤ T_neg → NEGATIVE   (NPV ≥ 95 %, proven with 95 % confidence)
+                                       ├─ score ≥ T_pos → POSITIVE   (PPV ≥ 90 %, proven with 95 % confidence)
+                                       ├─ score ≤ T_neg → NEGATIVE   (NPV ≥ 90 %, proven with 95 % confidence)
                                        └─ otherwise     → INCONCLUSIVE → lumbar puncture (as before)
 ```
 
@@ -266,7 +266,7 @@ explain cognition rather than amyloid). **Hypertension** has the most consistent
 p-tau217 in amyloid-negative people), but it is a clinical variable, not a blood test. It could be
 added as a yes/no column. Full references are in `data/default_training/DATASET_CARD.md`.
 
-## 5. How the "95 % confidence" decision works
+## 5. How the confidence rule works (default: PPV/NPV ≥ 90 %, proven with 95 % confidence)
 
 The Random Forest (500 trees, ≥ 3 patients per leaf) turns each patient's variables into a
 score between 0 and 1. The score alone is not a guarantee, so the thresholds are chosen
@@ -275,13 +275,44 @@ statistically:
 1. **Out-of-fold scores.** Repeated stratified 5-fold cross-validation (5 × 5) gives every
    training patient a score from models that never saw that patient.
 2. **Rule-in threshold `T_pos`.** This is the lowest score such that the PPV of all patients
-   at or above it is at least 95 %. By default, the **one-sided 95 % Clopper–Pearson lower bound**
-   of that PPV must reach 95 %, not just the observed percentage.
+   at or above it reaches the target (`target_ppv`, default **90 %**). The **one-sided 95 %
+   Clopper–Pearson lower bound** of that PPV must reach the target, not just the observed
+   percentage.
 3. **Rule-out threshold `T_neg`.** The same rule, with NPV, for patients at or below it.
 4. **Everything in between is INCONCLUSIVE → LP.** If no threshold reaches the target, the
    model never makes that call. With small cohorts this is the expected, safe behavior.
 5. The final model is trained on all patients. New patients are classified with that model and
    the thresholds above.
+
+### Why 90 % and not 95 %
+
+The project started with 95 %/95 %. With realistic variables and 600 patients that could certify
+nothing (§6). The default is now **90 % PPV and 90 % NPV, each proven with 95 % confidence**, for
+three reasons:
+
+- **The guideline level:** the 2025 Alzheimer's Association guideline expects about 90 %
+  sensitivity and specificity from a blood test that replaces CSF or PET.
+- **The reference is imperfect:** CSF Aβ42/40 itself agrees with amyloid PET in only about
+  90–93 % of cases.
+- **Positive calls are confirmed anyway:** before anti-amyloid treatment, PET or CSF
+  confirmation is required, so a POSITIVE call is not the final step.
+
+What each target gives on the default dataset (honest, nested cross-validation):
+
+| Target (proven with 95 % confidence unless noted) | LPs avoided | real PPV | real NPV | wrong calls / 600 |
+|---|---|---|---|---|
+| 95 % / 95 % | 3 % | no calls | 94.7 % (18/19) | 1 |
+| **90 % / 90 % (default)** | **38 %** | 97.1 % (34/35) | 91.6 % (175/191) | 17 |
+| 90 % PPV / 95 % NPV | 9 % | 97.1 % | 94.7 % | 2 |
+| 85 % / 90 % | 51 % | 89.6 % | 91.6 % | 28 |
+| 90 % / 90 %, observed value only (no proof) | 70 % | 89.4 % | 90.6 % | 41 |
+
+On 6,000 independent synthetic patients, the shipped default model avoided 53 % of LPs, with
+PPV 92.8 % (95 % CI 91.1–94.3 %) and NPV 95.6 % (94.7–96.5 %). Both are above the 90 % target.
+
+**Choose the target before collecting new data,** and justify it in the protocol. Whether 90 % is
+clinically acceptable is a decision for the clinical team, the ethics committee and eventually the
+regulators, not a statistical result.
 
 All of these settings are in `config.yaml` (`decision:`): the targets, the confidence level, and
 `use_confidence_bound: false` for an exploratory mode that uses point estimates only.
@@ -304,8 +335,9 @@ including p-tau181 and GFAP; the current compact model certifies nothing at this
 
 ## 6. How many patients do you need?
 
-This is the most important practical point. To *prove* PPV ≥ 95 % with 95 % confidence, a
-threshold must classify at least:
+This is the most important practical point. To *prove* PPV ≥ 90 % with 95 % confidence (the
+default), a threshold must classify at least **29** patients with no error, 46 with one, 61 with
+two, 76 with three. For the stricter 95 % target, it must classify at least:
 
 | wrong calls among them | 0 | 1 | 2 | 3 | 4 | 5 |
 |---|---|---|---|---|---|---|
@@ -330,9 +362,9 @@ the current compact, realistic set** (p-tau217 + Aβ42/40 + routine data; AUC ab
 | 1500 | 1 of 2 runs | no | 0–35 % |
 | 2500 | yes | no | 22–31 % (true NPV 94.6–96.6 %) |
 
-So with 600 patients **the shipped default model never gives an answer**: it refers everyone to LP.
-This is the correct, safe behaviour, but it means that a 95 % guarantee is out of reach at
-this cohort size. Ways forward:
+So with 600 patients a **95 %** guarantee is out of reach: the model would refer everyone to LP.
+This is why the default target was lowered to **90 %/90 %**, which avoids 38 % of LPs on the same 600
+patients (§5). Ways forward:
 - **pool cohorts** across centres;
 - add a **second, independent amyloid marker**;
 - relax the target to a lower PPV/NPV or a lower confidence level, which is a clinical
@@ -367,7 +399,7 @@ handling. I changed the following:
 ## 8. Project structure
 
 ```
-config.yaml              all settings: grey zone, 95 % targets, RF parameters, variable list
+config.yaml              all settings: grey zone, PPV/NPV targets (90 %), RF parameters, variable list
 app.py                   drag-and-drop interface (Streamlit)
 run_app.py / .bat / .sh  start the interface
 train.py                 command-line training  → models/<name>/  (--default: the shipped model)
