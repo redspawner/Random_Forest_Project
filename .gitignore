@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Trained models (re-create with train.py or the app)
+models/*
+!models/.gitkeep
+
+# PATIENT DATA MUST NEVER BE COMMITTED.
+# Only the synthetic demo files and the template are tracked.
+data/*
+!data/synthetic/
+!data/README.md
+*_results.xlsx
+outputs/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+~$*.xlsx

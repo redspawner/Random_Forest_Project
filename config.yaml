@@ -1,0 +1,238 @@
+# =============================================================================
+#  Grey-zone Alzheimer's triage with a Random Forest — configuration file
+# -----------------------------------------------------------------------------
+#  Everything a clinician/researcher may want to change lives here, so the
+#  Python code does not need to be edited:
+#    * the Stage-1 plasma p-tau217 grey-zone cut-offs,
+#    * the safety targets (95% PPV / 95% NPV),
+#    * the validation scheme,
+#    * the Random Forest settings,
+#    * the list of variables (add a new variable = add a block under `features`).
+#
+#  NOTE: a trained model stores a copy of this configuration. Changing this file
+#  only affects models trained AFTER the change.
+# =============================================================================
+
+columns:
+  patient_id: patient_id        # unique patient identifier (text)
+  label: lp_result              # lumbar-puncture (CSF) result: Positive / Negative
+                                #   -> needed only in the TRAINING file
+  patient_id_aliases: [id, patient, patientid, doente, id_doente, processo, record_id]
+  label_aliases: [lp, csf_result, pl_result, puncao_lombar, label, diagnosis, csf]
+
+grey_zone:
+  # Stage-1 plasma p-tau217 cut-offs (pg/mL) already used at the centre.
+  #   p-tau217 <  lower  -> Stage-1 NEGATIVE  (model not applied)
+  #   p-tau217 >  upper  -> Stage-1 POSITIVE  (model not applied)
+  #   lower <= p-tau217 <= upper -> GREY ZONE (the model is applied)
+  ptau217_lower: 0.14
+  ptau217_upper: 0.43
+  # Train only on grey-zone patients (recommended: the model is meant for them).
+  train_only_on_grey_zone: true
+
+decision:
+  # A patient is called POSITIVE only if, among comparable patients, at least
+  # `target_ppv` of POSITIVE calls were confirmed by lumbar puncture (PPV), and
+  # NEGATIVE only if at least `target_npv` of NEGATIVE calls were confirmed (NPV).
+  # Everybody else stays INCONCLUSIVE and is referred to lumbar puncture.
+  target_ppv: 0.95
+  target_npv: 0.95
+  # true (recommended): the one-sided lower confidence bound (Clopper-Pearson) of
+  #   the PPV/NPV must reach the target -> "95% PPV, demonstrated with 95%
+  #   statistical confidence". Safe, but needs larger cohorts (see README).
+  # false: only the point estimate must reach the target (exploratory use only).
+  use_confidence_bound: true
+  confidence_level: 0.95
+  # A threshold must classify at least this many training patients to be accepted.
+  min_calls_per_side: 10
+  # Patients missing more than this fraction of the model variables are not
+  # classified by the model (INCONCLUSIVE - insufficient data).
+  max_missing_fraction: 0.5
+
+validation:
+  cv_folds: 5               # stratified K-fold cross-validation
+  cv_repeats: 5             # repetitions with different random splits
+  # Nested cross-validation gives an HONEST estimate of the whole procedure
+  # (training + threshold selection) on patients never used to build it:
+  # % of grey-zone patients resolved (lumbar punctures avoided), real PPV/NPV.
+  nested_cv: true
+  outer_folds: 5
+  inner_repeats: 3
+  random_state: 42
+  permutation_importance: true
+
+random_forest:
+  n_estimators: 500         # number of trees
+  min_samples_leaf: 3       # >= 3 patients per leaf: smoother scores, less overfitting
+  max_features: sqrt        # variables tried at each split
+  max_depth: null           # null = no limit (min_samples_leaf already regularises)
+  class_weight: null        # null or "balanced"
+  n_jobs: -1                # use all CPU cores
+
+# -----------------------------------------------------------------------------
+#  Variables
+# -----------------------------------------------------------------------------
+#  name          : column name expected in the Excel file (units in brackets in
+#                  the header, e.g. "ptau217 (pg/mL)", are ignored when reading)
+#  type          : numeric (default) | sex | apoe4 | binary
+#  min / max     : plausibility limits. Values outside are treated as data errors.
+#  compute       : how to fill the variable when it is blank:
+#                    "<colA> / <colB>"  ratio of two other columns
+#                    "ckd_epi_2021"     eGFR from creatinine, age and sex
+#  use_as_feature: false -> read and checked, but not given to the model
+#  in_template   : false -> computed only, not shown in the Excel template
+#  aliases       : alternative column names accepted in the file
+#
+#  To ADD A NEW VARIABLE: copy one block, change the name/limits, add the column
+#  to the Excel file and retrain. Nothing else is needed.
+# -----------------------------------------------------------------------------
+features:
+  - name: age
+    description: Age at plasma collection
+    unit: years
+    min: 18
+    max: 110
+    example: 72
+    aliases: [idade, age_years]
+
+  - name: sex
+    type: sex
+    description: Biological sex (M = male, F = female)
+    unit: M/F
+    example: F
+    aliases: [sexo, gender, genero]
+
+  - name: education_years
+    description: Years of formal education (adjusts the interpretation of MoCA)
+    unit: years
+    min: 0
+    max: 30
+    example: 9
+    aliases: [education, escolaridade, anos_escolaridade]
+
+  - name: bmi
+    description: Body mass index
+    unit: kg/m2
+    min: 10
+    max: 70
+    example: 26.1
+    aliases: [imc, body_mass_index]
+
+  - name: egfr
+    description: Estimated glomerular filtration rate (left blank -> computed from creatinine with CKD-EPI 2021)
+    unit: mL/min/1.73m2
+    min: 1
+    max: 200
+    example: 78
+    compute: ckd_epi_2021
+    aliases: [tfg, tfge, egfr_ckd_epi]
+
+  - name: creatinine
+    description: Serum creatinine (only used to compute eGFR when eGFR is blank)
+    unit: mg/dL
+    min: 0.1
+    max: 20
+    example: 0.9
+    use_as_feature: false
+    aliases: [creatinina, scr]
+
+  - name: triglycerides
+    description: Serum triglycerides
+    unit: mg/dL
+    min: 10
+    max: 5000
+    example: 120
+    aliases: [trigliceridos, tg]
+
+  - name: ptau217
+    description: Plasma p-tau217 (REQUIRED; defines the grey zone)
+    unit: pg/mL
+    min: 0
+    max: 100
+    example: 0.25
+    aliases: [p_tau217, plasma_ptau217, ptau_217]
+
+  - name: ptau181
+    description: Plasma p-tau181
+    unit: pg/mL
+    min: 0
+    max: 500
+    example: 1.6
+    aliases: [p_tau181, plasma_ptau181]
+
+  - name: ab42
+    description: Plasma amyloid-beta 42
+    unit: pg/mL
+    min: 0.1
+    max: 1000
+    example: 28.5
+    aliases: [abeta42, amyloid_beta_42, ab1_42, abeta_42]
+
+  - name: ab40
+    description: Plasma amyloid-beta 40
+    unit: pg/mL
+    min: 1
+    max: 5000
+    example: 310
+    aliases: [abeta40, amyloid_beta_40, ab1_40, abeta_40]
+
+  - name: ab42_ab40_ratio
+    description: Plasma Abeta42/Abeta40 ratio (left blank -> computed from ab42 and ab40)
+    unit: ratio
+    min: 0.005
+    max: 1
+    compute: ab42 / ab40
+    aliases: [abeta42_40, ab42_40, ratio_ab42_ab40]
+
+  - name: ptau217_ab42_ratio
+    description: p-tau217 / Abeta42 (computed automatically)
+    unit: ratio
+    compute: ptau217 / ab42
+    in_template: false
+
+  - name: gfap
+    description: Plasma glial fibrillary acidic protein
+    unit: pg/mL
+    min: 1
+    max: 10000
+    example: 150
+    aliases: [plasma_gfap]
+
+  - name: nfl
+    description: Plasma neurofilament light chain
+    unit: pg/mL
+    min: 0.5
+    max: 2000
+    example: 18
+    aliases: [nf_l, neurofilament_light, plasma_nfl]
+
+  - name: apoe4
+    type: apoe4
+    description: Number of APOE e4 alleles (0, 1, 2) or genotype text such as E3/E4
+    unit: alleles
+    example: E3/E4
+    aliases: [apoe, apoe_genotype, apoe_e4]
+
+  - name: moca
+    description: Montreal Cognitive Assessment total score
+    unit: points (0-30)
+    min: 0
+    max: 30
+    example: 23
+    aliases: [moca_score, moca_total]
+
+  - name: mta_score
+    description: MRI medial temporal atrophy, Scheltens scale (worse side)
+    unit: 0-4
+    min: 0
+    max: 4
+    example: 1
+    aliases: [mta, scheltens]
+
+  - name: fazekas
+    description: MRI white-matter hyperintensities, Fazekas scale
+    unit: 0-3
+    min: 0
+    max: 3
+    example: 1
+    aliases: [fazekas_score]

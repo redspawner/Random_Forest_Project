@@ -1,0 +1,16 @@
+# Local-only settings for the drag-and-drop app.
+[browser]
+gatherUsageStats = false     # no telemetry
+
+[server]
+address = "localhost"        # only reachable from this computer
+port = 8501
+maxUploadSize = 50           # MB
+headless = true              # run_app.py opens the browser itself
+
+[theme]
+base = "light"
+primaryColor = "#2a78d6"
+
+[client]
+toolbarMode = "viewer"       # hide developer/deploy menu

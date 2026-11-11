@@ -1,0 +1,18 @@
+# Core scientific stack
+numpy>=1.26
+pandas>=2.2
+scipy>=1.11
+scikit-learn>=1.4      # >= 1.4 needed: Random Forest with native missing-value support
+joblib>=1.3
+
+# Excel / configuration
+openpyxl>=3.1
+pyyaml>=6.0
+
+# Figures and drag-and-drop interface
+matplotlib>=3.8
+streamlit>=1.50
+jinja2>=3.1            # coloured tables (pandas Styler)
+
+# Tests (optional)
+pytest>=8.0
