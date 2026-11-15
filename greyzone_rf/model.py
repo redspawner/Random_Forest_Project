@@ -34,6 +34,8 @@ from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedKFold
 
 from .config import config_snapshot, model_feature_names
 from .data import PreparedData, in_grey_zone
+from .i18n import column_name
+from .i18n import tr as translate
 from .stats import (INCONCLUSIVE, apply_thresholds, bootstrap_auc_ci, minimum_calls_needed,
                     select_threshold, triage_metrics)
 
@@ -113,7 +115,7 @@ def out_of_fold_scores(X, y, cfg, n_repeats, seed, importance=False, counter=Non
         if imp is not None:
             importances.append(imp)
         if counter:
-            counter.step(f"Cross-validation: fit {k + 1}/{len(splits)}")
+            counter.step(translate("Cross-validation: fit {k}/{n}", k=k + 1, n=len(splits)))
     out = {"scores": per_repeat.mean(axis=0), "folds": folds, "repeats": n_repeats,
            "repeat_aucs": [float(roc_auc_score(y, row)) for row in per_repeat]}
     if importances:
@@ -166,7 +168,7 @@ def nested_evaluation(X, y, cfg, seed, counter=None) -> dict:
     for k, (test, s, d, thr) in enumerate(runner(tasks)):
         scores[test], decisions[test], fold_thresholds[k] = s, d, thr
         if counter:
-            counter.step(f"Nested validation: outer fold {k + 1}/{folds}")
+            counter.step(translate("Nested validation: outer fold {k}/{n}", k=k + 1, n=folds))
     return {"scores": scores, "decisions": decisions, "fold_thresholds": fold_thresholds,
             "outer_folds": folds,
             "metrics": triage_metrics(y, decisions, float(cfg["decision"]["confidence_level"]))}
@@ -174,7 +176,7 @@ def nested_evaluation(X, y, cfg, seed, counter=None) -> dict:
 
 def _select_training_rows(prepared: PreparedData, cfg: dict) -> tuple[np.ndarray, dict, list[str]]:
     if prepared.labels is None:
-        raise TrainingError("The training file has no lumbar-puncture result column.")
+        raise TrainingError(translate("The training file has no lumbar-puncture result column."))
     labels = prepared.labels.to_numpy(float)
     ptau = prepared.table["ptau217"].to_numpy(float)
     has_label = ~np.isnan(labels)
@@ -192,13 +194,14 @@ def _select_training_rows(prepared: PreparedData, cfg: dict) -> tuple[np.ndarray
         outside = keep & ~grey
         exclusions["outside_grey_zone"] = int(outside.sum())
         if outside.any():
-            messages.append(f"{int(outside.sum())} patient(s) with p-tau217 outside the grey zone "
-                            "were excluded from training.")
+            messages.append(translate("{n} patient(s) with p-tau217 outside the grey zone were excluded from "
+                                      "training.", n=int(outside.sum())))
         keep &= grey
     if exclusions["missing_lp_result"]:
-        messages.append(f"{exclusions['missing_lp_result']} row(s) without a usable LP result were excluded.")
+        messages.append(translate("{n} row(s) without a usable LP result were excluded.",
+                                  n=exclusions["missing_lp_result"]))
     if exclusions["missing_ptau217"]:
-        messages.append(f"{exclusions['missing_ptau217']} row(s) without p-tau217 were excluded.")
+        messages.append(translate("{n} row(s) without p-tau217 were excluded.", n=exclusions["missing_ptau217"]))
     return np.flatnonzero(keep), exclusions, messages
 
 
@@ -214,23 +217,24 @@ def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
     y = prepared.labels.to_numpy(float)[rows].astype(int)
     n_pos, n_neg = int(np.sum(y == 1)), int(np.sum(y == 0))
     if min(n_pos, n_neg) < MIN_PER_CLASS:
-        raise TrainingError(f"Too few patients: {n_pos} LP-positive and {n_neg} LP-negative in the grey zone "
-                            f"(at least {MIN_PER_CLASS} of each are required; several hundred are recommended).")
+        raise TrainingError(translate("Too few patients: {pos} LP-positive and {neg} LP-negative in the grey zone "
+                                      "(at least {k} of each are required; several hundred are recommended).",
+                                      pos=n_pos, neg=n_neg, k=MIN_PER_CLASS))
 
     table = prepared.table.iloc[rows].reset_index(drop=True)
     candidates = model_feature_names(cfg)
     features = [f for f in candidates if table[f].notna().any()]
     dropped = [f for f in candidates if f not in features]
     if dropped:
-        messages.append("Variables with no data in the training file (not used by the model): "
-                        + ", ".join(dropped) + ".")
-    sparse = [f"{f} ({table[f].isna().mean():.0%})" for f in features if table[f].isna().mean() > 0.4]
+        messages.append(translate("Variables with no data in the training file (not used by the model): {names}.",
+                                  names=", ".join(column_name(f) for f in dropped)))
+    sparse = [f"{column_name(f)} ({table[f].isna().mean():.0%})" for f in features if table[f].isna().mean() > 0.4]
     if sparse:
-        messages.append("Variables missing in more than 40% of patients: " + ", ".join(sparse) + ".")
+        messages.append(translate("Variables missing in more than 40% of patients: {names}.", names=", ".join(sparse)))
     issues = sum(1 for i in rows if prepared.row_issues[i])
     if issues:
-        messages.append(f"{issues} training patient(s) had implausible/invalid values; those values were "
-                        "treated as missing (see the OOF predictions file).")
+        messages.append(translate("{n} training patient(s) had implausible/invalid values; those values were "
+                                  "treated as missing (see the OOF predictions file).", n=issues))
 
     X = table[features]
     folds = _n_folds(y, val["cv_folds"])
@@ -255,13 +259,14 @@ def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
 
     for side, key in (("positive", "selection_positive"), ("negative", "selection_negative")):
         if proc["thresholds"][side] is None:
-            word = "POSITIVE (rule-in)" if side == "positive" else "NEGATIVE (rule-out)"
-            messages.append(f"No threshold reached the safety target for {word} calls with the current data: "
-                            f"the model will never call a patient {side.upper()}. More patients are needed.")
+            word = translate("POSITIVE (rule-in)") if side == "positive" else translate("NEGATIVE (rule-out)")
+            messages.append(translate("No threshold reached the safety target for {word} calls with the current "
+                                      "data: the model will never call a patient {side}. More patients are needed.",
+                                      word=word, side=translate(side.upper())))
 
     predictions = pd.DataFrame({
         "patient_id": [prepared.ids[i] for i in rows],
-        "lp_result": np.where(y == 1, "Positive", "Negative"),
+        "lp_result": np.where(y == 1, translate("Positive"), translate("Negative")),
         "ptau217": X["ptau217"].to_numpy(),
         "rf_score_oof": np.round(oof_scores, 4),
         "decision_oof": [_decision_word(d) for d in oof_decisions],
@@ -323,7 +328,7 @@ def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
 
 
 def _decision_word(code: int) -> str:
-    return {1: "POSITIVE", 0: "NEGATIVE"}.get(int(code), "INCONCLUSIVE")
+    return {1: translate("POSITIVE"), 0: translate("NEGATIVE")}.get(int(code), translate("INCONCLUSIVE"))
 
 
 def save_bundle(bundle: dict, out_dir: str | Path) -> Path:
@@ -345,5 +350,6 @@ def load_bundle(path: str | Path) -> dict:
         path = path / "model.joblib"
     bundle = joblib.load(path)
     if not isinstance(bundle, dict) or bundle.get("format_version") != FORMAT_VERSION:
-        raise TrainingError(f"{path} is not a model file produced by this project (or an old version).")
+        raise TrainingError(translate("{path} is not a model file produced by this project (or an old version).",
+                                      path=path))
     return bundle

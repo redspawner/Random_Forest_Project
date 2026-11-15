@@ -13,6 +13,11 @@
 #  only affects models trained AFTER the change.
 # =============================================================================
 
+# Interface language: en (English) or pt (European Portuguese). It changes the texts of the app, the
+# Excel template, the results and the report; files and models work in both languages (Portuguese
+# column names such as idade, sexo, TFGe, resultado_PL are always accepted).
+language: en
+
 columns:
   patient_id: patient_id        # unique patient identifier (text)
   label: lp_result              # lumbar-puncture (CSF) result: Positive / Negative

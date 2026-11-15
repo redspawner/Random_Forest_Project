@@ -12,8 +12,10 @@ from pathlib import Path
 
 from greyzone_rf.config import PROJECT_ROOT
 from greyzone_rf.data import DataError, load_patient_file
+from greyzone_rf.i18n import tr
 from greyzone_rf.model import load_bundle
-from greyzone_rf.predict import DISCLAIMER, annotated_original, predict_prepared, results_to_excel, summarize
+from greyzone_rf.predict import (DISCLAIMER, annotated_original, predict_prepared, result_headers, results_to_excel,
+                                 summarize)
 
 
 def main() -> int:
@@ -27,28 +29,30 @@ def main() -> int:
     try:
         bundle = load_bundle(args.model)
     except FileNotFoundError:
-        print(f"ERROR: no model found at {args.model}. Train one first with train.py.", file=sys.stderr)
+        print(tr("ERROR: no model found at {path}. Train one first with train.py.", path=args.model), file=sys.stderr)
         return 1
     try:
         prepared = load_patient_file(args.file, bundle["config"])
     except DataError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        print(tr("ERROR: {exc}", exc=exc), file=sys.stderr)
         return 1
 
     results = predict_prepared(bundle, prepared)
-    out = Path(args.out) if args.out else Path(args.file).with_name(Path(args.file).stem + "_results.xlsx")
+    out = Path(args.out) if args.out else Path(args.file).with_name(Path(args.file).stem + tr("_results") + ".xlsx")
     out.write_bytes(results_to_excel(results, prepared, bundle))
-    annotated = out.with_name(Path(args.file).stem + "_with_predictions.xlsx")
+    annotated = out.with_name(Path(args.file).stem + tr("_with_predictions") + ".xlsx")
     annotated.write_bytes(annotated_original(results, prepared, bundle))
 
     for message in prepared.messages:
-        print(f"Note: {message}")
+        print(tr("Note: {message}", message=message))
     print()
-    print(results[["patient_id", "decision", "rf_score", "ptau217"]].to_string(index=False))
+    print(results[["patient_id", "decision", "rf_score", "ptau217"]].rename(columns=result_headers())
+          .to_string(index=False))
     print()
     for decision, count in summarize(results).items():
         print(f"  {decision:<36} {count}")
-    print(f"\nResults written to {out}\nOriginal file with predictions added: {annotated}\n{DISCLAIMER}")
+    print("\n" + tr("Results written to {out}", out=out) + "\n"
+          + tr("Original file with predictions added: {path}", path=annotated) + "\n" + DISCLAIMER)
     return 0
 
 

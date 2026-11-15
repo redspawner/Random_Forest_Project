@@ -18,6 +18,8 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
+from greyzone_rf.i18n import tr
+
 ROOT = Path(__file__).resolve().parent
 HOST = "127.0.0.1"
 FIRST_PORT = 8501
@@ -33,7 +35,7 @@ def free_port(start: int = FIRST_PORT) -> int:
             except OSError:          # already in use (e.g. the app is open in another window)
                 continue
             return port
-    raise RuntimeError("No free port found between 8501 and 8550.")
+    raise RuntimeError(tr("No free port found between 8501 and 8550."))
 
 
 def is_ready(url: str) -> bool:
@@ -49,9 +51,10 @@ def main() -> int:
     port = free_port()
     url = f"http://{HOST}:{port}"
     if port != FIRST_PORT:
-        print(f"Port {FIRST_PORT} is busy (is the app already open in another window?). Using port {port}.", flush=True)
-    print("Starting the app... the first start can take up to a minute.", flush=True)
-    print("Keep this window open while you use the app. Close it (or press Ctrl+C) to stop.\n", flush=True)
+        print(tr("Port {first} is busy (is the app already open in another window?). Using port {port}.",
+                 first=FIRST_PORT, port=port), flush=True)
+    print(tr("Starting the app... the first start can take up to a minute."), flush=True)
+    print(tr("Keep this window open while you use the app. Close it (or press Ctrl+C) to stop.") + "\n", flush=True)
     process = subprocess.Popen(
         [sys.executable, "-m", "streamlit", "run", str(ROOT / "app.py"),
          "--server.address", HOST, "--server.port", str(port), "--server.headless", "true"],
@@ -61,18 +64,19 @@ def main() -> int:
     try:
         while not is_ready(url):
             if process.poll() is not None:
-                print("\nERROR: the app stopped while starting (see the messages above).", flush=True)
+                print("\n" + tr("ERROR: the app stopped while starting (see the messages above)."), flush=True)
                 return 1
             if time.time() - start > STARTUP_TIMEOUT:
-                print(f"\nThe app is taking unusually long. Try opening {url} in your browser yourself.", flush=True)
+                print("\n" + tr("The app is taking unusually long. Try opening {url} in your browser yourself.",
+                                url=url), flush=True)
                 break
             time.sleep(1)
         else:
-            print(f"\n==> The app is ready: {url}  ({time.time() - start:.0f} s)", flush=True)
+            print("\n" + tr("==> The app is ready: {url}  ({s:.0f} s)", url=url, s=time.time() - start), flush=True)
             if open_browser:
                 webbrowser.open(url)
             else:
-                print("    Open that address in your web browser.", flush=True)
+                print("    " + tr("Open that address in your web browser."), flush=True)
         return process.wait()
     except KeyboardInterrupt:
         process.terminate()

@@ -95,4 +95,10 @@ App: `app.py` (Streamlit). There are 27 pytest tests.
 - **Open issue last seen:** "Port 8501 is not available" came from the user running the OLD bundle while
   another copy was still open. The new launcher picks the next port. The user should end old python.exe
   processes and use the latest zip.
+- **Portuguese version (pt-PT):**
+  - `config.yaml → language: pt` (or `GREYZONE_LANG=pt`). Texts are in `greyzone_rf/i18n_pt.py`;
+    `tests/test_i18n.py` checks that every text has a translation;
+  - the portable bundle is `tools/build_portable.py --lang pt` → `TriagemZonaCinzenta_portatil_win64.zip`
+    with `INICIAR_APLICACAO.bat`. CI builds and tests both languages;
+  - the long documentation (README, guide) stays in English.
 - The GitHub account billing lock was resolved by the user adding a card. The $0 budgets can stay.

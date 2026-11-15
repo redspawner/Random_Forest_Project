@@ -8,27 +8,28 @@ import numpy as np
 import pandas as pd
 
 from .data import PreparedData, in_grey_zone
+from .i18n import column_name, tr
 from .model import missing_fraction
 from .stats import INCONCLUSIVE, NEGATIVE, POSITIVE, apply_thresholds
 
-POSITIVE_TXT = "POSITIVE"
-NEGATIVE_TXT = "NEGATIVE"
-INCONCLUSIVE_TXT = "INCONCLUSIVE - refer to LP"
-NOT_APPLICABLE_TXT = "NOT APPLICABLE - outside grey zone"
-CHECK_DATA_TXT = "CHECK DATA"
+POSITIVE_TXT = tr("POSITIVE")
+NEGATIVE_TXT = tr("NEGATIVE")
+INCONCLUSIVE_TXT = tr("INCONCLUSIVE - refer to LP")
+NOT_APPLICABLE_TXT = tr("NOT APPLICABLE - outside grey zone")
+CHECK_DATA_TXT = tr("CHECK DATA")
 DECISION_ORDER = [POSITIVE_TXT, NEGATIVE_TXT, INCONCLUSIVE_TXT, NOT_APPLICABLE_TXT, CHECK_DATA_TXT]
 
-DISCLAIMER = ("Research prototype for teaching purposes - not a medical device. Results must not be "
-              "used for clinical decisions without validation in an independent cohort and "
-              "regulatory/ethical approval.")
+DISCLAIMER = tr("Research prototype for teaching purposes - not a medical device. Results must not be "
+                "used for clinical decisions without validation in an independent cohort and "
+                "regulatory/ethical approval.")
 
 
 def _pv_text(detail: dict | None, kind: str, confidence: float) -> str:
     if not detail:
         return ""
-    return (f"cross-validated {kind} {detail['predictive_value']:.1%} "
-            f"(one-sided {confidence:.0%} lower bound {detail['lower_bound']:.1%}; "
-            f"{detail['n_correct']}/{detail['n_called']} training calls correct)")
+    return tr("cross-validated {kind} {pv:.1%} (one-sided {conf:.0%} lower bound {lb:.1%}; "
+              "{k}/{n} training calls correct)", kind=tr(kind), pv=detail["predictive_value"], conf=confidence,
+              lb=detail["lower_bound"], k=detail["n_correct"], n=detail["n_called"])
 
 
 def predict_prepared(bundle: dict, prepared: PreparedData) -> pd.DataFrame:
@@ -58,50 +59,51 @@ def predict_prepared(bundle: dict, prepared: PreparedData) -> pd.DataFrame:
     for i in range(prepared.n):
         issues = prepared.row_issues[i]
         notes = list(prepared.row_notes[i])
-        missing_vars = [f for f in features if np.isnan(X.iloc[i][f])]
+        missing_vars = [column_name(f) for f in features if np.isnan(X.iloc[i][f])]
         score = scores[i]
         if issues:
             decision = CHECK_DATA_TXT
-            reason = "Data problem: " + "; ".join(issues) + ". Correct the value(s) and run again."
+            reason = tr("Data problem: {issues}. Correct the value(s) and run again.", issues="; ".join(issues))
         elif not grey[i]:
-            stage1 = "NEGATIVE" if ptau[i] < gz["ptau217_lower"] else "POSITIVE"
+            stage1 = NEGATIVE_TXT if ptau[i] < gz["ptau217_lower"] else POSITIVE_TXT
             decision = NOT_APPLICABLE_TXT
-            reason = (f"p-tau217 = {ptau[i]:g} pg/mL is outside the grey zone "
-                      f"[{gz['ptau217_lower']}-{gz['ptau217_upper']}]: Stage-1 result is {stage1}. "
-                      "The model was trained only on grey-zone patients and was not applied.")
+            reason = tr("p-tau217 = {v:g} pg/mL is outside the grey zone [{lo}-{hi}]: Stage-1 result is {stage1}. "
+                        "The model was trained only on grey-zone patients and was not applied.",
+                        v=ptau[i], lo=gz["ptau217_lower"], hi=gz["ptau217_upper"], stage1=stage1)
         elif flagged[i]:
             decision = INCONCLUSIVE_TXT
-            reason = ("Red flag present (" + ", ".join(flagged[i]) + "): atypical presentation, plasma "
-                      "p-tau217 is not reliable here. The model was not applied. Refer to lumbar puncture / PET.")
+            reason = tr("Red flag present ({flags}): atypical presentation, plasma p-tau217 is not reliable here. "
+                        "The model was not applied. Refer to lumbar puncture / PET.",
+                        flags=", ".join(column_name(f) for f in flagged[i]))
         elif miss[i] > max_missing:
             decision = INCONCLUSIVE_TXT
-            reason = (f"Insufficient data: {miss[i]:.0%} of the model variables are missing "
-                      f"(limit {max_missing:.0%}). Refer to lumbar puncture.")
+            reason = tr("Insufficient data: {miss:.0%} of the model variables are missing (limit {limit:.0%}). "
+                        "Refer to lumbar puncture.", miss=miss[i], limit=max_missing)
         else:
             code = codes[i]
             if code == POSITIVE:
                 decision = POSITIVE_TXT
-                reason = (f"RF score {score:.3f} >= rule-in threshold {thresholds['positive']:.2f}; "
-                          + _pv_text(details["positive"], "PPV", conf) + ".")
+                reason = tr("RF score {s:.3f} >= rule-in threshold {t:.2f}; {pv}.", s=score,
+                            t=thresholds["positive"], pv=_pv_text(details["positive"], "PPV", conf))
             elif code == NEGATIVE:
                 decision = NEGATIVE_TXT
-                reason = (f"RF score {score:.3f} <= rule-out threshold {thresholds['negative']:.2f}; "
-                          + _pv_text(details["negative"], "NPV", conf) + ".")
+                reason = tr("RF score {s:.3f} <= rule-out threshold {t:.2f}; {pv}.", s=score,
+                            t=thresholds["negative"], pv=_pv_text(details["negative"], "NPV", conf))
             else:
                 decision = INCONCLUSIVE_TXT
                 parts = []
-                parts.append(f"rule-out <= {thresholds['negative']:.2f}" if thresholds["negative"] is not None
-                             else "no safe rule-out threshold")
-                parts.append(f"rule-in >= {thresholds['positive']:.2f}" if thresholds["positive"] is not None
-                             else "no safe rule-in threshold")
-                reason = (f"RF score {score:.3f} is not in a zone with demonstrated "
-                          f"PPV/NPV >= {cfg['decision']['target_ppv']:.0%}/{cfg['decision']['target_npv']:.0%} "
-                          f"({'; '.join(parts)}). Refer to lumbar puncture.")
+                parts.append(tr("rule-out <= {t:.2f}", t=thresholds["negative"]) if thresholds["negative"] is not None
+                             else tr("no safe rule-out threshold"))
+                parts.append(tr("rule-in >= {t:.2f}", t=thresholds["positive"]) if thresholds["positive"] is not None
+                             else tr("no safe rule-in threshold"))
+                reason = tr("RF score {s:.3f} is not in a zone with demonstrated PPV/NPV >= {ppv:.0%}/{npv:.0%} "
+                            "({parts}). Refer to lumbar puncture.", s=score, ppv=cfg["decision"]["target_ppv"],
+                            npv=cfg["decision"]["target_npv"], parts="; ".join(parts))
             for f in features:
                 v = X.iloc[i][f]
                 if f in ranges and not np.isnan(v) and not ranges[f][0] <= v <= ranges[f][1]:
-                    notes.append(f"{f} = {v:g} outside the range seen in training "
-                                 f"[{ranges[f][0]:g}-{ranges[f][1]:g}]")
+                    notes.append(tr("{f} = {v:g} outside the range seen in training [{lo:g}-{hi:g}]",
+                                    f=column_name(f), v=v, lo=ranges[f][0], hi=ranges[f][1]))
         rows.append({
             "patient_id": prepared.ids[i],
             "decision": decision,
@@ -124,31 +126,42 @@ def results_to_excel(results: pd.DataFrame, prepared: PreparedData, bundle: dict
     report = bundle["report"]
     thr = bundle["thresholds"]
     summary = summarize(results)
+    none = tr("none")
     info = [
-        ("Generated", pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")),
-        ("Model trained", bundle["created"]),
-        ("Training patients (grey zone)", report["cohort"]["n_train"]),
-        ("Rule-in threshold (RF score >=)", thr["positive"] if thr["positive"] is not None else "none"),
-        ("Rule-out threshold (RF score <=)", thr["negative"] if thr["negative"] is not None else "none"),
-        ("Target PPV / NPV", f"{bundle['config']['decision']['target_ppv']:.0%} / "
-                             f"{bundle['config']['decision']['target_npv']:.0%}"),
-        ("Confidence bound required", bundle["config"]["decision"]["use_confidence_bound"]),
+        (tr("Generated"), pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")),
+        (tr("Model trained"), bundle["created"]),
+        (tr("Training patients (grey zone)"), report["cohort"]["n_train"]),
+        (tr("Rule-in threshold (RF score >=)"), thr["positive"] if thr["positive"] is not None else none),
+        (tr("Rule-out threshold (RF score <=)"), thr["negative"] if thr["negative"] is not None else none),
+        (tr("Target PPV / NPV"), f"{bundle['config']['decision']['target_ppv']:.0%} / "
+                                 f"{bundle['config']['decision']['target_npv']:.0%}"),
+        (tr("Confidence bound required"), tr("yes") if bundle["config"]["decision"]["use_confidence_bound"]
+         else tr("no")),
         ("", ""),
-        *[(f"Patients: {k}", v) for k, v in summary.items()],
+        *[(tr("Patients: {decision}", decision=k), v) for k, v in summary.items()],
         ("", ""),
-        ("DISCLAIMER", DISCLAIMER),
+        (tr("DISCLAIMER"), DISCLAIMER),
     ]
+    sheets = {"results": tr("Results"), "summary": tr("Summary"), "input": tr("Input")}
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        results.to_excel(writer, sheet_name="Results", index=False)
+        results.rename(columns=result_headers()).to_excel(writer, sheet_name=sheets["results"], index=False)
         info = [(item, "" if value is None else str(value)) for item, value in info]
-        pd.DataFrame(info, columns=["Item", "Value"]).to_excel(writer, sheet_name="Summary", index=False)
-        prepared.raw.to_excel(writer, sheet_name="Input", index=False)
-        _style_results(writer.book["Results"], results)
-        sheet = writer.book["Summary"]
+        pd.DataFrame(info, columns=[tr("Item"), tr("Value")]).to_excel(writer, sheet_name=sheets["summary"],
+                                                                       index=False)
+        prepared.raw.to_excel(writer, sheet_name=sheets["input"], index=False)
+        _style_results(writer.book[sheets["results"]], results)
+        sheet = writer.book[sheets["summary"]]
         sheet.column_dimensions["A"].width = 38
         sheet.column_dimensions["B"].width = 60
     return buffer.getvalue()
+
+
+def result_headers() -> dict[str, str]:
+    """Column headers of the results table in the interface language."""
+    return {"patient_id": tr("patient_id"), "decision": tr("decision"), "rf_score": tr("rf_score"),
+            "ptau217": "ptau217", "explanation": tr("explanation"), "missing_variables": tr("missing_variables"),
+            "notes": tr("notes")}
 
 
 def _style_results(sheet, results: pd.DataFrame) -> None:
@@ -174,13 +187,14 @@ def _style_results(sheet, results: pd.DataFrame) -> None:
 # The uploaded file itself, with the predictions added as extra columns
 # ---------------------------------------------------------------------------
 ANNOTATION_COLUMNS = {
-    "AI decision": "decision",
-    "AI RF score": "rf_score",
-    "AI explanation": "explanation",
-    "AI missing variables": "missing_variables",
-    "AI notes": "notes",
+    tr("AI decision"): "decision",
+    tr("AI RF score"): "rf_score",
+    tr("AI explanation"): "explanation",
+    tr("AI missing variables"): "missing_variables",
+    tr("AI notes"): "notes",
 }
-INFO_SHEET = "AI prediction info"
+INFO_SHEET = tr("AI prediction info")
+_WIDTHS = {"decision": 32, "rf_score": 12, "explanation": 80, "missing_variables": 30, "notes": 40}
 _FILLS = {
     POSITIVE_TXT: "F8D7D3", NEGATIVE_TXT: "D5ECDD", INCONCLUSIVE_TXT: "FCEBC5",
     NOT_APPLICABLE_TXT: "E7E6E2", CHECK_DATA_TXT: "E7E6E2",
@@ -191,21 +205,22 @@ def _info_rows(results: pd.DataFrame, bundle: dict) -> list[tuple[str, str]]:
     thr = bundle["thresholds"]
     dec = bundle["config"]["decision"]
     gz = bundle["config"]["grey_zone"]
+    uncertified = tr("none (not certified)")
     rows = [
-        ("Generated", pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")),
-        ("Model trained", str(bundle["created"])),
-        ("Training data", str(bundle["report"].get("source_file") or "")),
-        ("Training patients (grey zone)", str(bundle["report"]["cohort"]["n_train"])),
-        ("Grey zone (p-tau217, pg/mL)", f"{gz['ptau217_lower']} - {gz['ptau217_upper']}"),
-        ("POSITIVE if RF score >=", "none (not certified)" if thr["positive"] is None else f"{thr['positive']:.2f}"),
-        ("NEGATIVE if RF score <=", "none (not certified)" if thr["negative"] is None else f"{thr['negative']:.2f}"),
-        ("Safety target", f"PPV >= {dec['target_ppv']:.0%}, NPV >= {dec['target_npv']:.0%}"
-                          + (f" (one-sided {dec['confidence_level']:.0%} lower bound)"
-                             if dec["use_confidence_bound"] else " (point estimate)")),
+        (tr("Generated"), pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")),
+        (tr("Model trained"), str(bundle["created"])),
+        (tr("Training data"), str(bundle["report"].get("source_file") or "")),
+        (tr("Training patients (grey zone)"), str(bundle["report"]["cohort"]["n_train"])),
+        (tr("Grey zone (p-tau217, pg/mL)"), f"{gz['ptau217_lower']} - {gz['ptau217_upper']}"),
+        (tr("POSITIVE if RF score >="), uncertified if thr["positive"] is None else f"{thr['positive']:.2f}"),
+        (tr("NEGATIVE if RF score <="), uncertified if thr["negative"] is None else f"{thr['negative']:.2f}"),
+        (tr("Safety target"), tr("PPV >= {ppv:.0%}, NPV >= {npv:.0%}", ppv=dec["target_ppv"], npv=dec["target_npv"])
+         + (tr(" (one-sided {conf:.0%} lower bound)", conf=dec["confidence_level"])
+            if dec["use_confidence_bound"] else tr(" (point estimate)"))),
         ("", ""),
     ]
-    rows += [(f"Patients: {k}", str(v)) for k, v in summarize(results).items()]
-    rows += [("", ""), ("DISCLAIMER", DISCLAIMER)]
+    rows += [(tr("Patients: {decision}", decision=k), str(v)) for k, v in summarize(results).items()]
+    rows += [("", ""), (tr("DISCLAIMER"), DISCLAIMER)]
     return rows
 
 
@@ -214,6 +229,7 @@ def annotated_original(results: pd.DataFrame, prepared: PreparedData, bundle: di
 
     For an Excel upload the original workbook is kept (other sheets, formatting, column order);
     a CSV upload is converted to Excel. A sheet "AI prediction info" describes the model used.
+    Column and sheet names follow the interface language.
     Columns added by a previous run are overwritten, not duplicated.
     """
     from openpyxl import Workbook, load_workbook
@@ -227,7 +243,7 @@ def annotated_original(results: pd.DataFrame, prepared: PreparedData, bundle: di
     else:
         wb = Workbook()
         ws = wb.active
-        ws.title = "Patients"
+        ws.title = tr("Patients")
         ws.append([str(c) for c in prepared.raw.columns])
         for record in prepared.raw.itertuples(index=False):
             ws.append([None if pd.isna(v) else v for v in record])
@@ -260,9 +276,8 @@ def annotated_original(results: pd.DataFrame, prepared: PreparedData, bundle: di
                 cell.alignment = Alignment(wrap_text=False, vertical="top")
 
     from openpyxl.utils import get_column_letter
-    widths = {"AI decision": 32, "AI RF score": 12, "AI explanation": 80, "AI missing variables": 30, "AI notes": 40}
-    for name, width in widths.items():
-        ws.column_dimensions[get_column_letter(columns[name])].width = width
+    for name, key in ANNOTATION_COLUMNS.items():
+        ws.column_dimensions[get_column_letter(columns[name])].width = _WIDTHS[key]
 
     if INFO_SHEET in wb.sheetnames:
         del wb[INFO_SHEET]

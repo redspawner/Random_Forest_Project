@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from .config import FeatureSpec, feature_specs, normalize_name
+from .i18n import column_name, pt_aliases, tr
 
 MISSING_TOKENS = {"", "na", "n/a", "nan", "none", "null", "-", "--", "nd", "missing", "?", "nr"}
 SEX_VALUES = {
@@ -81,12 +82,12 @@ def read_table(source: str | Path | BinaryIO | bytes, filename: str | None = Non
         filename = filename or getattr(source, "name", None)
         content = source.read()
     if not filename:
-        raise DataError("Cannot determine the file type (missing file name).")
+        raise DataError(tr("Cannot determine the file type (missing file name)."))
 
     suffix = Path(filename).suffix.lower()
     if suffix in {".xlsx", ".xlsm"}:
         workbook = pd.ExcelFile(io.BytesIO(content), engine="openpyxl")
-        sheet = next((s for s in workbook.sheet_names if s.strip().lower() == "patients"),
+        sheet = next((s for s in workbook.sheet_names if s.strip().lower() in ("patients", "doentes")),
                      workbook.sheet_names[0])
         df = pd.read_excel(workbook, sheet_name=sheet, dtype=object)
         source = {"kind": "excel", "sheet": sheet, "content": content}
@@ -97,9 +98,9 @@ def read_table(source: str | Path | BinaryIO | bytes, filename: str | None = Non
         df = pd.read_csv(io.StringIO(text), sep=sep, dtype=object)
         source = {"kind": "csv", "sheet": None, "content": content}
     elif suffix == ".xls":
-        raise DataError("Old .xls format is not supported: open it in Excel and 'Save as' .xlsx.")
+        raise DataError(tr("Old .xls format is not supported: open it in Excel and 'Save as' .xlsx."))
     else:
-        raise DataError(f"Unsupported file type '{suffix}'. Use .xlsx or .csv.")
+        raise DataError(tr("Unsupported file type '{suffix}'. Use .xlsx or .csv.", suffix=suffix))
 
     df = df.dropna(axis=0, how="all").dropna(axis=1, how="all")
     df = df.loc[:, [not str(c).startswith("Unnamed") for c in df.columns]]
@@ -133,22 +134,22 @@ def parse_number(value: Any) -> tuple[float, str | None, str | None]:
     if _is_blank(value):
         return np.nan, None, None
     if isinstance(value, bool):
-        return np.nan, None, f"invalid number '{value}'"
+        return np.nan, None, tr("invalid number '{value}'", value=value)
     if isinstance(value, (int, float, np.integer, np.floating)):
         return float(value), None, None
     text = str(value).strip().replace(" ", "").replace(" ", "")
     note = None
     if text[:1] in "<>":
-        note = f"censored value '{text}' used as {text[1:]}"
+        note = tr("censored value '{text}' used as {value}", text=text, value=text[1:])
         text = text[1:].lstrip("=")
     if "," in text and "." not in text:          # Portuguese decimal comma: 0,25
         text = text.replace(",", ".")
     try:
         number = float(text)
     except ValueError:
-        return np.nan, None, f"invalid number '{value}'"
+        return np.nan, None, tr("invalid number '{value}'", value=value)
     if not math.isfinite(number):
-        return np.nan, None, f"invalid number '{value}'"
+        return np.nan, None, tr("invalid number '{value}'", value=value)
     return number, note, None
 
 
@@ -158,7 +159,7 @@ def parse_sex(value: Any) -> tuple[float, str | None, str | None]:
     key = _text_key(value)
     if key in SEX_VALUES:
         return float(SEX_VALUES[key]), None, None
-    return np.nan, None, f"invalid sex '{value}' (use M or F)"
+    return np.nan, None, tr("invalid sex '{value}' (use M or F)", value=value)
 
 
 def parse_binary(value: Any) -> tuple[float, str | None, str | None]:
@@ -169,7 +170,7 @@ def parse_binary(value: Any) -> tuple[float, str | None, str | None]:
         key = key[0]
     if key in BINARY_VALUES:
         return float(BINARY_VALUES[key]), None, None
-    return np.nan, None, f"invalid yes/no value '{value}'"
+    return np.nan, None, tr("invalid yes/no value '{value}'", value=value)
 
 
 def parse_apoe4(value: Any) -> tuple[float, str | None, str | None]:
@@ -178,7 +179,7 @@ def parse_apoe4(value: Any) -> tuple[float, str | None, str | None]:
     if isinstance(value, (int, float, np.integer, np.floating)) and not isinstance(value, bool):
         if float(value) in (0.0, 1.0, 2.0):
             return float(value), None, None
-        return np.nan, None, f"invalid APOE e4 allele count '{value}' (0, 1 or 2)"
+        return np.nan, None, tr("invalid APOE e4 allele count '{value}' (0, 1 or 2)", value=value)
     key = _text_key(value).replace("apoe", "")
     if key in {"0", "1", "2"}:
         return float(key), None, None
@@ -186,14 +187,15 @@ def parse_apoe4(value: Any) -> tuple[float, str | None, str | None]:
     if match:
         return float([match.group(1), match.group(2)].count("4")), None, None
     if key in {"carrier", "yes", "sim", "positive", "positivo", "e4+"}:
-        return 1.0, "APOE e4 'carrier' coded as 1 allele", None
+        return 1.0, tr("APOE e4 'carrier' coded as 1 allele"), None
     if key in {"noncarrier", "non-carrier", "no", "nao", "negative", "negativo", "e4-"}:
         return 0.0, None, None
-    return np.nan, None, f"invalid APOE value '{value}' (use 0/1/2 or e.g. E3/E4)"
+    return np.nan, None, tr("invalid APOE value '{value}' (use 0/1/2 or e.g. E3/E4)", value=value)
 
 
 STAGE_VALUES = {
-    "scd": 0, "subjectivecognitivedecline": 0, "subjective": 0, "dcs": 0, "declinio cognitivo subjetivo": 0,
+    "scd": 0, "subjectivecognitivedecline": 0, "subjective": 0, "dcs": 0, "decliniocognitivosubjetivo": 0,
+    "demencialigeira": 2,
     "mci": 1, "mildcognitiveimpairment": 1, "dcl": 1, "defice cognitivo ligeiro": 1, "deficecognitivoligeiro": 1,
     "dementia": 2, "demencia": 2, "mild dementia": 2, "milddementia": 2, "ad dementia": 2,
 }
@@ -206,11 +208,11 @@ def parse_stage(value: Any) -> tuple[float, str | None, str | None]:
     if isinstance(value, (int, float, np.integer, np.floating)) and not isinstance(value, bool):
         if float(value) in (0.0, 1.0, 2.0):
             return float(value), None, None
-        return np.nan, None, f"invalid clinical stage '{value}' (SCD, MCI or Dementia)"
+        return np.nan, None, tr("invalid clinical stage '{value}' (SCD, MCI or Dementia)", value=value)
     key = _text_key(value).replace("-", "")
     if key in STAGE_VALUES:
         return float(STAGE_VALUES[key]), None, None
-    return np.nan, None, f"invalid clinical stage '{value}' (SCD, MCI or Dementia)"
+    return np.nan, None, tr("invalid clinical stage '{value}' (SCD, MCI or Dementia)", value=value)
 
 
 PARSERS = {"numeric": parse_number, "sex": parse_sex, "binary": parse_binary, "apoe4": parse_apoe4,
@@ -255,12 +257,12 @@ def ckd_epi_2021(creatinine_mg_dl, age, is_female):
 def _match_columns(df: pd.DataFrame, cfg: dict) -> tuple[dict[str, str], list[str], list[str]]:
     lookup: dict[str, str] = {}
     cols = cfg["columns"]
-    for alias in [cols["patient_id"], *cols.get("patient_id_aliases", [])]:
+    for alias in [cols["patient_id"], *cols.get("patient_id_aliases", []), *pt_aliases("__id__")]:
         lookup[normalize_name(alias)] = "__id__"
-    for alias in [cols["label"], *cols.get("label_aliases", [])]:
+    for alias in [cols["label"], *cols.get("label_aliases", []), *pt_aliases("__label__")]:
         lookup[normalize_name(alias)] = "__label__"
     for spec in feature_specs(cfg):
-        for alias in [spec.name, *spec.aliases]:
+        for alias in [spec.name, *spec.aliases, *pt_aliases(spec.name)]:
             lookup[normalize_name(alias)] = spec.name
 
     found: dict[str, str] = {}
@@ -268,10 +270,11 @@ def _match_columns(df: pd.DataFrame, cfg: dict) -> tuple[dict[str, str], list[st
     for header in df.columns:
         target = lookup.get(normalize_name(header))
         if target is None:
-            if not str(header).startswith("AI "):          # columns added by a previous prediction run
+            if not str(header).startswith(("AI ", "IA ")):  # columns added by a previous prediction run
                 unrecognized.append(str(header))
         elif target in found:
-            messages.append(f"Column '{header}' ignored: '{found[target]}' already provides '{target}'.")
+            messages.append(tr("Column '{header}' ignored: '{other}' already provides '{target}'.",
+                               header=header, other=found[target], target=column_name(target)))
         else:
             found[target] = header
     return found, unrecognized, messages
@@ -281,27 +284,28 @@ def _check_range(spec: FeatureSpec, value: float) -> str | None:
     if np.isnan(value):
         return None
     if spec.min is not None and value < spec.min:
-        return f"{spec.name} = {value:g} below plausible minimum {spec.min:g} {spec.unit}".strip()
+        return tr("{name} = {value:g} below plausible minimum {limit:g} {unit}", name=column_name(spec.name),
+                  value=value, limit=spec.min, unit=spec.unit).strip()
     if spec.max is not None and value > spec.max:
-        return f"{spec.name} = {value:g} above plausible maximum {spec.max:g} {spec.unit}".strip()
+        return tr("{name} = {value:g} above plausible maximum {limit:g} {unit}", name=column_name(spec.name),
+                  value=value, limit=spec.max, unit=spec.unit).strip()
     return None
 
 
 def prepare_table(df: pd.DataFrame, cfg: dict, require_label: bool = False) -> PreparedData:
     """Parse and check a raw patient table according to the configuration."""
     if df.empty:
-        raise DataError("The file contains no patient rows.")
+        raise DataError(tr("The file contains no patient rows."))
     found, unrecognized, messages = _match_columns(df, cfg)
     specs = feature_specs(cfg)
     n = len(df)
 
     if "ptau217" not in found:
-        raise DataError("Required column 'ptau217' (plasma p-tau217, pg/mL) was not found.")
+        raise DataError(tr("Required column 'ptau217' (plasma p-tau217, pg/mL) was not found."))
     if require_label and "__label__" not in found:
-        raise DataError(
-            f"Training needs the lumbar-puncture result column '{cfg['columns']['label']}' "
-            "(Positive / Negative)."
-        )
+        raise DataError(tr("Training needs the lumbar-puncture result column '{label}' (Positive / Negative).",
+                           label=column_name("__label__") if column_name("__label__") != "__label__"
+                           else cfg["columns"]["label"]))
 
     # Patient identifiers
     if "__id__" in found:
@@ -309,16 +313,16 @@ def prepare_table(df: pd.DataFrame, cfg: dict, require_label: bool = False) -> P
         for i, value in enumerate(df[found["__id__"]]):
             if _is_blank(value):
                 ids.append(f"row_{i + 2}")
-                messages.append(f"Excel row {i + 2}: missing patient_id, using 'row_{i + 2}'.")
+                messages.append(tr("Excel row {row}: missing patient_id, using 'row_{row}'.", row=i + 2))
             else:
                 text = str(value).strip()
                 ids.append(text[:-2] if re.fullmatch(r"\d+\.0", text) else text)
     else:
         ids = [f"row_{i + 2}" for i in range(n)]
-        messages.append("No 'patient_id' column found: rows are identified by their Excel row number.")
+        messages.append(tr("No 'patient_id' column found: rows are identified by their Excel row number."))
     duplicated = sorted({x for x in ids if ids.count(x) > 1})
     if duplicated:
-        messages.append(f"Duplicated patient_id values: {', '.join(duplicated[:10])}.")
+        messages.append(tr("Duplicated patient_id values: {ids}.", ids=", ".join(duplicated[:10])))
 
     row_issues: list[list[str]] = [[] for _ in range(n)]
     row_notes: list[list[str]] = [[] for _ in range(n)]
@@ -334,10 +338,10 @@ def prepare_table(df: pd.DataFrame, cfg: dict, require_label: bool = False) -> P
         for i, cell in enumerate(df[found[spec.name]]):
             value, note, error = parser(cell)
             if error:
-                row_issues[i].append(f"{spec.name}: {error}")
+                row_issues[i].append(f"{column_name(spec.name)}: {error}")
                 continue
             if note:
-                row_notes[i].append(f"{spec.name}: {note}")
+                row_notes[i].append(f"{column_name(spec.name)}: {note}")
             problem = _check_range(spec, value)
             if problem:
                 row_issues[i].append(problem)
@@ -356,7 +360,7 @@ def prepare_table(df: pd.DataFrame, cfg: dict, require_label: bool = False) -> P
         elif spec.compute == "ckd_epi_2021":
             computed = ckd_epi_2021(table["creatinine"], table["age"], table["sex"])
             computed[table["sex"].isna().to_numpy() | table["age"].isna().to_numpy()] = np.nan
-            note = "eGFR computed from creatinine (CKD-EPI 2021)"
+            note = tr("eGFR computed from creatinine (CKD-EPI 2021)")
         else:
             num, den = spec.ratio_parts
             with np.errstate(divide="ignore", invalid="ignore"):
@@ -370,24 +374,23 @@ def prepare_table(df: pd.DataFrame, cfg: dict, require_label: bool = False) -> P
                 row_notes[i].append(note)
             problem = _check_range(spec, target[i])
             if problem:
-                row_issues[i].append(problem + " (computed)")
+                row_issues[i].append(problem + tr(" (computed)"))
                 target[i] = np.nan
         table[spec.name] = target
 
     # 3) p-tau217 is mandatory for every patient
     for i, value in enumerate(table["ptau217"]):
         if np.isnan(value) and not any(s.startswith("ptau217") for s in row_issues[i]):
-            row_issues[i].append("ptau217 missing (required)")
+            row_issues[i].append(tr("ptau217 missing (required)"))
 
     # 4) Absent / unrecognised columns
     absent = [s.name for s in specs if s.use_as_feature and s.compute is None and s.name not in found]
     if absent:
-        messages.append("Variables not present in this file (treated as missing): " + ", ".join(absent) + ".")
+        messages.append(tr("Variables not present in this file (treated as missing): {names}.",
+                           names=", ".join(column_name(a) for a in absent)))
     if unrecognized:
-        messages.append(
-            "Columns not used (not defined in config.yaml): " + ", ".join(unrecognized)
-            + ". To use a new variable, add it to the 'features' list in config.yaml and retrain."
-        )
+        messages.append(tr("Columns not used (not defined in config.yaml): {names}. To use a new variable, add it "
+                           "to the 'features' list in config.yaml and retrain.", names=", ".join(unrecognized)))
 
     labels = None
     if "__label__" in found:
@@ -395,9 +398,10 @@ def prepare_table(df: pd.DataFrame, cfg: dict, require_label: bool = False) -> P
         bad = [(ids[i], v) for i, v in enumerate(df[found["__label__"]])
                if not _is_blank(v) and np.isnan(labels[i])]
         for pid, v in bad[:20]:
-            messages.append(f"Patient {pid}: lumbar-puncture result '{v}' not understood (use Positive/Negative).")
+            messages.append(tr("Patient {pid}: lumbar-puncture result '{value}' not understood (use Positive/Negative).",
+                               pid=pid, value=v))
         if require_label and labels.notna().sum() == 0:
-            raise DataError("No usable lumbar-puncture results (Positive/Negative) were found.")
+            raise DataError(tr("No usable lumbar-puncture results (Positive/Negative) were found."))
 
     columns_found = {k: str(v) for k, v in found.items() if not k.startswith("__")}
     return PreparedData(source=df.attrs.get("source"), ids=ids, table=table, labels=labels, raw=df,

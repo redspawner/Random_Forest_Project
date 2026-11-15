@@ -17,6 +17,7 @@ from pathlib import Path
 
 from greyzone_rf.config import PROJECT_ROOT, load_config
 from greyzone_rf.data import DataError, load_patient_file
+from greyzone_rf.i18n import tr
 from greyzone_rf.model import TrainingError, save_bundle, train_model
 from greyzone_rf.report import markdown_report, write_report
 
@@ -41,17 +42,17 @@ def main() -> int:
     if args.default:
         from greyzone_rf.default_model import train_default
 
-        print("Training the DEFAULT model from", cfg["default_model"]["training_file"], "...")
+        print(tr("Training the DEFAULT model from {file} ...", file=cfg["default_model"]["training_file"]))
         bundle = train_default(cfg, nested=args.nested)
         print(markdown_report(bundle))
-        print(f"\nDefault model saved to {cfg['default_model']['model_dir']} (with manifest.json).")
+        print("\n" + tr("Default model saved to {folder} (with manifest.json).", folder=cfg["default_model"]["model_dir"]))
         return 0
     if not args.file:
         parser.error("give a training file, or use --default")
     try:
         prepared = load_patient_file(args.file, cfg, require_label=True)
     except DataError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        print(tr("ERROR: {exc}", exc=exc), file=sys.stderr)
         return 1
 
     start = time.time()
@@ -63,18 +64,18 @@ def main() -> int:
             last[0] = pct // 10
             print(f"  [{pct:3d}%] {message}", flush=True)
 
-    print(f"Training on {args.file} ...")
+    print(tr("Training on {file} ...", file=args.file))
     try:
         bundle = train_model(prepared, cfg, nested=args.nested, progress=progress, source_name=Path(args.file).name)
     except TrainingError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        print(tr("ERROR: {exc}", exc=exc), file=sys.stderr)
         return 1
     model_path = save_bundle(bundle, args.out)
     write_report(bundle, args.out)
     print()
     print(markdown_report(bundle))
     print()
-    print(f"Finished in {time.time() - start:.0f} s. Model saved to {model_path}")
+    print(tr("Finished in {s:.0f} s. Model saved to {path}", s=time.time() - start, path=model_path))
     return 0
 
 

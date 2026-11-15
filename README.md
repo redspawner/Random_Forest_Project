@@ -79,6 +79,20 @@ default model, classification of the example patients, training, and app start-u
 re-pack the extracted folder as .rar or .zip and send it; the receiving computer needs nothing
 else.
 
+**Portuguese version.** The same workflow also builds `TriagemZonaCinzenta_portatil_win64.zip`
+(or build it with `python tools/build_portable.py --lang pt`). Start it with
+**`INICIAR_APLICACAO.bat`**. The app, the Excel template, the results files and the training report
+are in European Portuguese, for example POSITIVO / NEGATIVO / INCONCLUSIVO, the columns
+`IA decisão`… and Portuguese column names such as `idade`, `sexo`, `TFGe` and `resultado_PL`.
+
+### Interface language
+
+`config.yaml → language: en` (English) or `language: pt` (European Portuguese). The environment
+variable `GREYZONE_LANG=pt` overrides it. The Portuguese texts are in `greyzone_rf/i18n_pt.py`.
+Files and models work in both languages: Portuguese column names (`idade`, `TFGe`,
+`resultado_PL`, …) and values (`Positivo`, `DCL`, `Demência`, `sim/não`) are always accepted, and a
+model trained in one language can be used in the other.
+
 ## 2. Quick start with the synthetic demo
 
 If you used the install scripts, run the commands below with the environment's Python:
@@ -427,7 +441,7 @@ docs/PROJECT_GUIDE.md    step-by-step guide to the whole project
 docs/VARIABLE_ANALYSIS.md which variables help / were removed
 analyze_variables.py     leave-one-variable-out analysis on any training file
 install.bat / .sh        one-click installation
-tools/build_portable.py  builds the portable Windows bundle (no installation needed)
+tools/build_portable.py  builds the portable Windows bundle (no installation needed; --lang pt = Portuguese)
 .github/workflows/       builds and tests that bundle on Windows for every push
 greyzone_rf/
   config.py              configuration loading/validation
@@ -437,6 +451,7 @@ greyzone_rf/
   predict.py             classification of new patients, results Excel
   report.py              training report and figures
   template.py            Excel template
+  i18n.py / i18n_pt.py   interface language (English / European Portuguese texts)
   synthetic.py           synthetic memory-clinic cohort, calibrated to published values
   default_model.py       train/check the shipped default model and its manifest
 templates/               Excel template

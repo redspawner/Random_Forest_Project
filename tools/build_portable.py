@@ -1,6 +1,7 @@
 """Build a portable Windows bundle that needs NOTHING installed on the target computer.
 
     python tools/build_portable.py                  # -> dist/GreyZoneTriage_portable_win64.zip
+    python tools/build_portable.py --lang pt        # -> dist/TriagemZonaCinzenta_portatil_win64.zip (Portuguese)
 
 The bundle contains:
     START_APP.bat           double-click to start the drag-and-drop app
@@ -46,6 +47,54 @@ cd /d "%~dp0app"
 pause
 """
 
+START_BAT_PT = r"""@echo off
+chcp 65001 >nul
+REM Triagem DA na zona cinzenta - versão portátil. Não é preciso instalar nada.
+cd /d "%~dp0app"
+echo Triagem DA na zona cinzenta - versão portátil
+echo O navegador abre sozinho assim que a aplicação estiver pronta (primeiro arranque: até 1 minuto).
+"%~dp0python\python.exe" run_app.py
+pause
+"""
+
+TRAIN_BAT_PT = r"""@echo off
+chcp 65001 >nul
+REM Volta a treinar o modelo padrão com o conjunto de dados indicado em app\config.yaml (default_model).
+cd /d "%~dp0app"
+"%~dp0python\python.exe" train.py --default
+pause
+"""
+
+README_TXT_PT = """Triagem DA na zona cinzenta (Random Forest) - VERSÃO PORTÁTIL PARA WINDOWS
+===========================================================================
+
+1. Extraia a pasta completa (botão direito no .zip -> Extrair tudo). Não a execute a partir
+   de dentro do zip. Um caminho curto, como C:\\TriagemZonaCinzenta, funciona melhor.
+2. Faça duplo clique em INICIAR_APLICACAO.bat. Espere por
+   "==> A aplicação está pronta: http://127.0.0.1:8501"; o navegador abre sozinho
+   (o primeiro arranque pode demorar até um minuto).
+   (Se o Windows SmartScreen avisar: "Mais informações" -> "Executar mesmo assim".)
+3. Mantenha a janela preta aberta enquanto usa a aplicação; feche-a para parar.
+   Se disser que a porta 8501 está ocupada, há outra cópia aberta: a aplicação usa
+   simplesmente a porta seguinte (ou feche a outra janela preta / termine "python.exe"
+   no Gestor de Tarefas).
+
+Nada é instalado no computador e nada é enviado pela internet:
+o Python e todas as bibliotecas estão dentro da pasta "python".
+
+Outros ficheiros:
+  RETREINAR_MODELO_PADRAO.bat  volta a treinar o modelo padrão (app\\config.yaml -> default_model)
+  app\\examples\\               ficheiros de exemplo (treino / novos doentes / resultado)
+  app\\config.yaml              definições (language: pt = português, en = inglês)
+  app\\README.md                documentação técnica completa (em inglês)
+
+O modelo de ficheiro Excel em português descarrega-se no separador
+"Modelo de ficheiro e ajuda" da aplicação. Os ficheiros com nomes de colunas em
+inglês também são aceites.
+
+Protótipo de investigação para fins de ensino - não é um dispositivo médico.
+"""
+
 README_TXT = """Grey-zone AD triage (Random Forest) - PORTABLE WINDOWS VERSION
 ==============================================================
 
@@ -70,6 +119,16 @@ Research prototype for teaching purposes - not a medical device.
 """
 
 
+LANGS = {
+    "en": {"folder": "GreyZoneTriage", "zip": "GreyZoneTriage_portable_win64",
+           "start": ("START_APP.bat", START_BAT), "train": ("RETRAIN_DEFAULT_MODEL.bat", TRAIN_BAT),
+           "readme": ("README_FIRST.txt", README_TXT)},
+    "pt": {"folder": "TriagemZonaCinzenta", "zip": "TriagemZonaCinzenta_portatil_win64",
+           "start": ("INICIAR_APLICACAO.bat", START_BAT_PT), "train": ("RETREINAR_MODELO_PADRAO.bat", TRAIN_BAT_PT),
+           "readme": ("LEIA_PRIMEIRO.txt", README_TXT_PT)},
+}
+
+
 def run(cmd: list[str]) -> None:
     print("  $", " ".join(cmd), flush=True)
     subprocess.run(cmd, check=True)
@@ -90,15 +149,33 @@ def tracked_files() -> list[Path]:
     return [f for f in files if f.parts[0] not in EXCLUDE_TOP and "__pycache__" not in f.parts]
 
 
+def set_language(app: Path, lang: str) -> None:
+    """Switch the bundled app to another interface language."""
+    config = app / "config.yaml"
+    text = config.read_text(encoding="utf-8")
+    if "\nlanguage: en\n" not in text:
+        raise SystemExit("config.yaml has no 'language: en' line")
+    config.write_text(text.replace("\nlanguage: en\n", f"\nlanguage: {lang}\n"), encoding="utf-8")
+    # The figures and text report of the shipped model are regenerated in the new language the
+    # first time the "Model report" tab is opened.
+    model = app / "models" / "default"
+    for item in [*model.glob("*.png"), model / "report.md"]:
+        item.unlink(missing_ok=True)
+    print(f"  interface language: {lang}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--python", default=PY_VERSION, help=f"Windows Python version (default {PY_VERSION})")
     parser.add_argument("--out", default=str(ROOT / "dist"), help="output folder (default dist/)")
     parser.add_argument("--no-zip", action="store_true", help="leave the folder, do not create the .zip")
+    parser.add_argument("--lang", choices=sorted(LANGS), default="en",
+                        help="interface language of the bundle: en (default) or pt (European Portuguese)")
     args = parser.parse_args()
+    names = LANGS[args.lang]
 
     out = Path(args.out)
-    bundle = out / "GreyZoneTriage"
+    bundle = out / names["folder"]
     if bundle.exists():
         shutil.rmtree(bundle)
     (bundle / "python").mkdir(parents=True)
@@ -130,16 +207,19 @@ def main() -> None:
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest)
     print(f"  {len(files)} files")
-    (bundle / "START_APP.bat").write_text(START_BAT.replace("\n", "\r\n"), encoding="ascii")
-    (bundle / "RETRAIN_DEFAULT_MODEL.bat").write_text(TRAIN_BAT.replace("\n", "\r\n"), encoding="ascii")
-    (bundle / "README_FIRST.txt").write_text(README_TXT.replace("\n", "\r\n"), encoding="utf-8")
+    for key in ("start", "train"):
+        name, text = names[key]
+        (bundle / name).write_text(text.replace("\n", "\r\n"), encoding="utf-8")     # UTF-8 without BOM
+    name, text = names["readme"]
+    (bundle / name).write_text(text.replace("\n", "\r\n"), encoding="utf-8-sig")
+    if args.lang != "en":
+        set_language(bundle / "app", args.lang)
 
     if args.no_zip:
         print(f"Done: {bundle}")
         return
     print("4/4 zip")
-    archive = shutil.make_archive(str(out / "GreyZoneTriage_portable_win64"), "zip", root_dir=out,
-                                  base_dir="GreyZoneTriage")
+    archive = shutil.make_archive(str(out / names["zip"]), "zip", root_dir=out, base_dir=names["folder"])
     size = Path(archive).stat().st_size / 1e6
     print(f"Done: {archive}  ({size:.0f} MB)")
 
