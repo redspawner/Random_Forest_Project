@@ -1,0 +1,29 @@
+{
+  "trained": "2026-11-20T11:25:31",
+  "model_type": "spline_logistic",
+  "training_file": "data/default_training/synthetic_training_dataset.xlsx",
+  "training_file_sha256": "4e604a4732f3933e08db3e03778ab0d85fc78b7473958e10ec06c9cbf96071be",
+  "rows_in_file": 600,
+  "training_patients": 600,
+  "thresholds": {
+    "positive": null,
+    "negative": null
+  },
+  "features": [
+    "egfr",
+    "triglycerides",
+    "anemia",
+    "ptau217",
+    "apoe4",
+    "hypertension",
+    "stroke",
+    "clinical_stage"
+  ],
+  "versions": {
+    "python": "3.13.18",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5"
+  },
+  "written": "2026-11-20T11:25:32"
+}

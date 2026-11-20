@@ -43,8 +43,14 @@ MODEL_TYPES: dict[str, dict] = {
     "gradient_boosting": {"label": "Gradient Boosting", "short": "GB"},
     "extra_trees": {"label": "Extra Trees", "short": "ET"},
     "svm": {"label": "Support Vector Machine", "short": "SVM"},
-    "ensemble": {"label": "Ensemble (RF + LR + GB)", "short": "ENS"},
+    "xgboost": {"label": "XGBoost", "short": "XGB"},
+    "spline_logistic": {"label": "Spline Logistic Regression", "short": "SLR"},
+    "ensemble": {"label": "Ensemble (average)", "short": "ENS"},
 }
+
+# Continuous variables that get spline terms in the spline logistic regression (others enter linearly)
+SPLINE_COLUMNS = ("ptau217", "egfr", "triglycerides", "age", "hemoglobin", "ab42_ab40_ratio", "ptau217_ab42_ratio",
+                  "bmi")
 
 # Variables with a right-skewed distribution: log-transformed for the models that are not tree based
 # (trees are unaffected by monotone transformations).
@@ -54,8 +60,11 @@ DEFAULT_PARAMS: dict[str, dict] = {
     "logistic_regression": {"C": 0.5, "class_weight": None, "log_transform": True},
     "gradient_boosting": {"learning_rate": 0.03, "max_iter": 150, "max_leaf_nodes": 4, "min_samples_leaf": 20,
                           "l2_regularization": 1.0, "class_weight": None},
-    "extra_trees": {"n_estimators": 500, "min_samples_leaf": 3, "max_features": "sqrt", "class_weight": None},
+    "extra_trees": {"n_estimators": 500, "min_samples_leaf": 10, "max_features": "sqrt", "class_weight": None},
     "svm": {"C": 0.5, "gamma": "scale", "class_weight": None, "log_transform": True},
+    "xgboost": {"n_estimators": 200, "learning_rate": 0.02, "max_depth": 2, "min_child_weight": 5, "subsample": 0.8,
+                "colsample_bytree": 0.8, "reg_lambda": 1.0, "reg_alpha": 0.0},
+    "spline_logistic": {"C": 0.1, "n_knots": 3, "degree": 3},
     "ensemble": {"members": ["random_forest", "logistic_regression", "gradient_boosting"]},
 }
 
@@ -103,6 +112,50 @@ class LogSkewed(BaseEstimator, TransformerMixin):
         return values
 
 
+class SplineFeatures(BaseEstimator, TransformerMixin):
+    """Generalised-additive-model style design matrix for a logistic regression.
+
+    Continuous variables in SPLINE_COLUMNS (log scale for the skewed ones) get a natural-cubic-like
+    B-spline basis, so their effect can bend (for example a kidney effect that only starts below an
+    eGFR of about 60). Other variables enter linearly. Missing values: training median plus a 0/1
+    "was missing" indicator, as for the plain logistic regression.
+    """
+
+    def __init__(self, n_knots: int = 4, degree: int = 3):
+        self.n_knots = n_knots
+        self.degree = degree
+
+    def fit(self, X, y=None):
+        from sklearn.preprocessing import SplineTransformer
+
+        frame = pd.DataFrame(X).copy()
+        self.columns_ = list(frame.columns)
+        self.log_ = LogSkewed().fit(frame)
+        values = pd.DataFrame(self.log_.transform(frame), columns=self.columns_)
+        self.imputer_ = SimpleImputer(strategy="median", add_indicator=True).fit(values)
+        filled = pd.DataFrame(self.imputer_.transform(values)[:, :len(self.columns_)], columns=self.columns_)
+        self.spline_cols_ = [c for c in self.columns_ if c in SPLINE_COLUMNS and filled[c].nunique() > 5]
+        self.linear_cols_ = [c for c in self.columns_ if c not in self.spline_cols_]
+        self.splines_ = {c: SplineTransformer(n_knots=self.n_knots, degree=self.degree, knots="quantile",
+                                              extrapolation="linear").fit(filled[[c]]) for c in self.spline_cols_}
+        self.scaler_ = StandardScaler().fit(self._design(values))
+        self.n_features_in_ = len(self.columns_)
+        return self
+
+    def _design(self, values: pd.DataFrame) -> np.ndarray:
+        imputed = self.imputer_.transform(values)
+        filled = pd.DataFrame(imputed[:, :len(self.columns_)], columns=self.columns_)
+        indicators = imputed[:, len(self.columns_):]
+        parts = [filled[self.linear_cols_].to_numpy()] + [self.splines_[c].transform(filled[[c]])
+                                                          for c in self.spline_cols_]
+        return np.hstack(parts + [indicators])
+
+    def transform(self, X):
+        frame = pd.DataFrame(X, columns=self.columns_) if not isinstance(X, pd.DataFrame) else X[self.columns_]
+        values = pd.DataFrame(self.log_.transform(frame), columns=self.columns_)
+        return self.scaler_.transform(self._design(values))
+
+
 def _imputed_pipeline(final, log_transform: bool):
     steps = [LogSkewed()] if log_transform else []
     steps += [SimpleImputer(strategy="median", add_indicator=True), StandardScaler(), final]
@@ -139,6 +192,19 @@ def build_estimator(cfg: dict, seed: int, n_jobs: int | None = None, kind: str |
         calibrated = CalibratedClassifierCV(svm, method="sigmoid", ensemble=False,
                                             cv=StratifiedKFold(5, shuffle=True, random_state=seed))
         return _imputed_pipeline(calibrated, bool(p.get("log_transform", True)))
+    if kind == "xgboost":
+        from xgboost import XGBClassifier
+
+        return XGBClassifier(
+            n_estimators=int(p["n_estimators"]), learning_rate=float(p["learning_rate"]),
+            max_depth=int(p["max_depth"]), min_child_weight=float(p["min_child_weight"]),
+            subsample=float(p["subsample"]), colsample_bytree=float(p["colsample_bytree"]),
+            reg_lambda=float(p["reg_lambda"]), reg_alpha=float(p.get("reg_alpha", 0.0)),
+            tree_method="hist", n_jobs=1 if n_jobs in (None, 1) else n_jobs, random_state=seed,
+            eval_metric="logloss", verbosity=0)
+    if kind == "spline_logistic":
+        return make_pipeline(SplineFeatures(int(p["n_knots"]), int(p["degree"])),
+                             LogisticRegression(C=float(p["C"]), max_iter=5000))
     if kind == "ensemble":
         members = [m for m in p["members"] if m in MODEL_TYPES and m != "ensemble"]
         return VotingClassifier([(m, build_estimator(cfg, seed, n_jobs=1, kind=m)) for m in members],

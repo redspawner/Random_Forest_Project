@@ -11,13 +11,15 @@ import io
 import re
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
 from greyzone_rf.config import PROJECT_ROOT, load_config
 from greyzone_rf.data import DataError, load_patient_file
-from greyzone_rf.compare import (calibration_figure, classify_with_all, comparison_table, paired_differences,
-                                 roc_figure, same_patients, triage_figure)
+from greyzone_rf import explain
+from greyzone_rf.compare import (dca_text, calibration_figure, classify_with_all, comparison_table, dca_figure,
+                                 paired_differences, roc_figure, same_patients, triage_figure)
 from greyzone_rf.default_model import default_dir, default_status, shipped_types, train_default
 from greyzone_rf.estimators import DEFAULT_TYPE, model_label
 from greyzone_rf.i18n import LANG, tr
@@ -149,6 +151,14 @@ if bundle:
         created=bundle["created"].replace("T", " "), n=rep["cohort"]["n_train"], lo=gz["ptau217_lower"],
         hi=gz["ptau217_upper"], pos=fmt_threshold(bundle["thresholds"]["positive"]),
         neg=fmt_threshold(bundle["thresholds"]["negative"])))
+    if bundle["thresholds"]["positive"] is None and bundle["thresholds"]["negative"] is None:
+        st.sidebar.warning(tr("No threshold could be certified with this training data (PPV/NPV >= {ppv:.0%} / "
+                              "{npv:.0%} with {conf:.0%} confidence): every grey-zone patient will be INCONCLUSIVE. "
+                              "More patients or more informative variables are needed; the scores, SHAP "
+                              "explanations and decision curves still show what the model has learnt.",
+                              ppv=bundle["config"]["decision"]["target_ppv"],
+                              npv=bundle["config"]["decision"]["target_npv"],
+                              conf=bundle["config"]["decision"]["confidence_level"]))
     if rep.get("nested"):
         m = rep["nested"]["metrics"]
         st.sidebar.markdown(tr("**Expected LPs avoided:** {v:.0%} (nested CV, {e} wrong calls / {n})",
@@ -242,6 +252,49 @@ def show_predictions(upload, bundle: dict) -> None:
     d2.download_button(tr("Download results report (Excel)"), data=results_to_excel(results, prepared, bundle),
                        file_name=f"{stem}{tr('_results')}.xlsx", mime=XLSX_MIME,
                        help=tr("Separate workbook: results table, summary and a copy of the input."))
+    show_explanations(results, prepared, bundle, stem)
+
+
+def show_explanations(results: pd.DataFrame, prepared, bundle: dict, stem: str) -> None:
+    """Collapsed SHAP section: per-patient waterfall + full table, and all patients as Excel."""
+    with st.expander(tr("Why this score? Explanation per patient (SHAP)"), expanded=False):
+        if not explain.available(bundle):
+            st.info(tr("This model file has no reference patients for explanations. Re-train it to enable SHAP."))
+            return
+        scored = results[results["score"].notna()].reset_index()
+        if scored.empty:
+            st.info(tr("No patient received a model score (outside the grey zone or data problems)."))
+            return
+        st.caption(tr("SHAP values show how much each variable moved this patient's score away from the score of "
+                      "an average training patient. Positive values push towards POSITIVE, negative towards "
+                      "NEGATIVE. They explain the model, not the biology."))
+        labels = [f"{r.patient_id}  ·  {r.decision}  ·  {tr('score')} {r.score:.3f}" for r in scored.itertuples()]
+        choice = st.selectbox(tr("Patient"), range(len(labels)), format_func=lambda i: labels[i],
+                              key="shap_patient")
+        row = scored.iloc[choice]
+        X = prepared.table.reindex(columns=bundle["features"])
+        x_row = X.iloc[[int(row["index"])]]
+        cache = st.session_state.setdefault("shap_cache", {})
+        key = (id(bundle), bundle["created"], tuple(np.nan_to_num(x_row.to_numpy(float), nan=-999.0).ravel()))
+        if key not in cache:
+            with st.spinner(tr("Computing the explanation ...")):
+                cache[key] = explain.shap_values(bundle, x_row)
+        values, base = cache[key]
+        st.image(explain.waterfall_png(bundle, x_row.iloc[0], values[0], base, float(row["score"]),
+                                       bundle["thresholds"], title=f"{row['patient_id']}: {row['decision']}"),
+                 width="stretch")
+        st.dataframe(explain.explanation_table(bundle, x_row.iloc[0], values[0]), hide_index=True)
+        st.caption(tr("Average training patient: {b:.3f}  +  sum of the contributions: {s:+.3f}  =  this "
+                      "patient's score {score:.3f}.", b=base, s=float(values[0].sum()), score=float(row["score"])))
+        if st.button(tr("Compute explanations for all patients (Excel)"), key="shap_all"):
+            bar = st.progress(0.0)
+            table = explain.all_patients_table(bundle, X.iloc[scored["index"].to_numpy()],
+                                               list(scored["patient_id"]), scored["score"].to_numpy(float),
+                                               progress=bar.progress)
+            buffer = io.BytesIO()
+            table.to_excel(buffer, index=False)
+            st.download_button(tr("Download the explanations (Excel)"), data=buffer.getvalue(),
+                               file_name=f"{stem}{tr('_shap_explanations')}.xlsx", mime=XLSX_MIME)
 
 
 # ---------------------------------------------------------------------------
@@ -342,6 +395,22 @@ with tab_report:
         st.image(str(model_dir / FIGURES["safety"]), width="stretch",
                  caption=tr("How the thresholds were chosen: predictive value and its lower confidence bound "
                             "for every candidate threshold."))
+        with st.expander(tr("Global explanation: what drives the score (SHAP)"), expanded=False):
+            if not explain.available(bundle):
+                st.info(tr("This model file has no reference patients for explanations. Re-train it to enable "
+                           "SHAP."))
+            else:
+                shap_file = model_dir / "shap_summary.png"
+                if not shap_file.exists():
+                    with st.spinner(tr("Computing SHAP values for the reference patients (once) ...")):
+                        bg = bundle["background"][bundle["features"]].head(60)
+                        values, _ = explain.shap_values(bundle, bg, max_background=40)
+                        shap_file.write_bytes(explain.summary_png(bundle, values, bg))
+                st.image(str(shap_file), width="stretch")
+                st.caption(tr("Left: average size of each variable's effect on the score. Right: one dot per "
+                              "reference patient; dots to the right raised that patient's score. Colour = the "
+                              "variable's value (red high, blue low). Unlike permutation importance, this also "
+                              "shows the direction and the shape of each effect."))
         pred_file = model_dir / "training_predictions.xlsx"
         if pred_file.exists():
             st.download_button(tr("Download out-of-fold predictions of the training patients"),
@@ -362,6 +431,7 @@ def cached_comparison(keys: tuple, reference: str) -> dict:
     """Figures and tables for the selected model folders (keys = (name, folder, mtime) tuples)."""
     bundles = {name: load_folder(Path(folder)) for name, folder, _ in keys}
     out = {"table": comparison_table(bundles), "roc": roc_figure(bundles), "triage": triage_figure(bundles),
+           "dca": dca_figure(bundles, float(load_config()["decision"]["target_npv"])),
            "calibration": calibration_figure(bundles), "paired": None, "same": same_patients(bundles)}
     if out["same"] and len(bundles) > 1:
         out["paired"] = paired_differences(bundles, reference, n_boot=1000)
@@ -427,6 +497,10 @@ with tab_compare:
                 st.warning(tr("These models were not trained on the same patients, so paired differences cannot "
                               "be computed. Train them together with 'Train every model type'."))
 
+            st.subheader(tr("Decision curve analysis"))
+            st.image(comp["dca"], width="stretch")
+            with st.expander(tr("What does the decision curve show?"), expanded=False):
+                st.markdown(dca_text())
             st.subheader(tr("Classify a file with every model"))
             cmp_upload = st.file_uploader(tr("Drag and drop the patient file here"), type=["xlsx", "xlsm", "csv"],
                                           key="compare_upload")

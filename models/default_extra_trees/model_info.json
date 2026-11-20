@@ -1,6 +1,6 @@
 {
   "model_type": "extra_trees",
-  "created": "2026-11-20T10:25:49",
+  "created": "2026-11-20T11:25:13",
   "source_file": "synthetic_training_dataset.xlsx",
   "n_train": 600
 }

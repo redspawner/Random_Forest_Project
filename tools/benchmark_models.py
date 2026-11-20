@@ -5,7 +5,7 @@
 
 For every model: repeated cross-validation, thresholds with the PPV/NPV rule, nested validation
 (honest estimate) and, optionally, the true PPV/NPV on a large independent synthetic cohort drawn
-from the same generator as the default dataset (other random seed).
+from the same generator as the default dataset (version 2, other random seed).
 """
 
 from __future__ import annotations
@@ -42,12 +42,13 @@ def main() -> None:
     if args.external:
         from greyzone_rf.synthetic import grey_zone_cohort
 
-        cohort = grey_zone_cohort(args.external, seed=777, prefix="EXT", real=True)
+        cohort = grey_zone_cohort(args.external, seed=777, prefix="EXT", real=True, version=2)
         ext = (cohort["lp_result"].map({"Positive": 1, "Negative": 0}).to_numpy(),
                prepare_table(cohort.drop(columns=["lp_result"]), cfg))
     print("| Model | AUC (CV) | POS >= | NEG <= | LPs avoided (nested) | Wrong (nested) | PPV / NPV (nested) |"
-          + (" LPs avoided (ext.) | PPV ext. (95% CI) | NPV ext. (95% CI) | Wrong per 1000 (ext.) |" if ext else ""))
-    print("|---" * (7 + (4 if ext else 0)) + "|")
+          + (" AUC ext. | LPs avoided (ext.) | PPV ext. (95% CI) | NPV ext. (95% CI) | Wrong per 1000 (ext.) |"
+             " Net LPs avoided /100 at pt 0.10 (ext.) |" if ext else ""))
+    print("|---" * (7 + (6 if ext else 0)) + "|")
     for kind in args.models or shipped_types(cfg):
         t = time.time()
         b = train_model(prep, cfg, nested=True, model_type_name=kind)
@@ -63,10 +64,15 @@ def main() -> None:
             tp, fp = int((pos & (y == 1)).sum()), int((pos & (y == 0)).sum())
             tn, fn = int((neg & (y == 0)).sum()), int((neg & (y == 1)).sum())
             pci, nci = cp_interval(tp, tp + fp), cp_interval(tn, tn + fn)
-            line += (f" {(pos | neg).mean():.1%} | {tp / max(tp + fp, 1):.1%} ({pci[0]:.1%}-{pci[1]:.1%}) | "
-                     f"{tn / max(tn + fn, 1):.1%} ({nci[0]:.1%}-{nci[1]:.1%}) | {1000 * (fp + fn) / len(y):.0f} |")
             ok = ~np.isnan(s)
-            line += f"  <!-- ext AUC {roc_auc_score(y[ok], s[ok]):.3f}, {time.time() - t:.0f} s -->"
+            yo, so = y[ok], s[ok]
+            nb = np.mean((so >= 0.10) & (yo == 1)) - np.mean((so >= 0.10) & (yo == 0)) / 9
+            nb_all = yo.mean() - (1 - yo.mean()) / 9
+            net_lp = (nb - nb_all) * 9 * 100
+            ppv = f"{tp / (tp + fp):.1%} ({pci[0]:.1%}-{pci[1]:.1%})" if tp + fp else "no calls"
+            npv = f"{tn / (tn + fn):.1%} ({nci[0]:.1%}-{nci[1]:.1%})" if tn + fn else "no calls"
+            line += (f" {roc_auc_score(yo, so):.3f} | {(pos | neg).mean():.1%} | {ppv} | {npv} | "
+                     f"{1000 * (fp + fn) / len(y):.0f} | {net_lp:.1f} |  <!-- {time.time() - t:.0f} s -->")
         print(line, flush=True)
 
 

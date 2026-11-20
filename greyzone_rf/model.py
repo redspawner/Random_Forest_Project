@@ -36,6 +36,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedKFold
 from .config import config_snapshot, model_feature_names
 from .data import PreparedData, in_grey_zone
 from .estimators import DEFAULT_TYPE, build_estimator, model_label, model_type
+from .explain import background_sample
 from .i18n import column_name
 from .i18n import tr as translate
 from .stats import (INCONCLUSIVE, apply_thresholds, bootstrap_auc_ci, minimum_calls_needed,
@@ -84,9 +85,18 @@ def decide(scores, X: pd.DataFrame, thresholds: dict, max_missing: float) -> np.
     return decisions
 
 
-def _fit_fold(X, y, train, test, cfg, seed, importance):
+def _with_augmentation(X_train: pd.DataFrame, y_train: np.ndarray, aug) -> tuple[pd.DataFrame, np.ndarray]:
+    """Add the augmentation patients (if any) to a TRAINING set. They are never used to test or to choose
+    thresholds, so the PPV/NPV proof stays based on real patients only."""
+    if aug is None:
+        return X_train, y_train
+    X_aug, y_aug = aug
+    return (pd.concat([X_train, X_aug[X_train.columns]], ignore_index=True), np.r_[y_train, y_aug])
+
+
+def _fit_fold(X, y, train, test, cfg, seed, importance, aug=None):
     """One cross-validation fit (runs in a worker process)."""
-    forest = build_forest(cfg, seed, n_jobs=1).fit(X.iloc[train], y[train])
+    forest = build_forest(cfg, seed, n_jobs=1).fit(*_with_augmentation(X.iloc[train], y[train], aug))
     scores = forest.predict_proba(X.iloc[test])[:, 1]
     imp = None
     if importance:
@@ -95,11 +105,11 @@ def _fit_fold(X, y, train, test, cfg, seed, importance):
     return test, scores, imp
 
 
-def out_of_fold_scores(X, y, cfg, n_repeats, seed, importance=False, counter=None, parallel=True) -> dict:
+def out_of_fold_scores(X, y, cfg, n_repeats, seed, importance=False, counter=None, parallel=True, aug=None) -> dict:
     folds = _n_folds(y, cfg["validation"]["cv_folds"])
     splitter = RepeatedStratifiedKFold(n_splits=folds, n_repeats=n_repeats, random_state=seed)
     splits = list(splitter.split(X, y))
-    tasks = (delayed(_fit_fold)(X, y, tr, te, cfg, seed + k, importance and k < folds)
+    tasks = (delayed(_fit_fold)(X, y, tr, te, cfg, seed + k, importance and k < folds, aug)
              for k, (tr, te) in enumerate(splits))
     runner = Parallel(n_jobs=_workers(cfg) if parallel else 1, return_as="generator")
     per_repeat = np.full((n_repeats, len(y)), np.nan)
@@ -122,15 +132,15 @@ def out_of_fold_scores(X, y, cfg, n_repeats, seed, importance=False, counter=Non
     return out
 
 
-def fit_procedure(X, y, cfg, n_repeats, seed, importance=False, counter=None, parallel=True) -> dict:
+def fit_procedure(X, y, cfg, n_repeats, seed, importance=False, counter=None, parallel=True, aug=None) -> dict:
     """Steps 2-4 of the module docstring on (X, y)."""
     dec = cfg["decision"]
-    oof = out_of_fold_scores(X, y, cfg, n_repeats, seed, importance, counter, parallel)
+    oof = out_of_fold_scores(X, y, cfg, n_repeats, seed, importance, counter, parallel, aug)
     kwargs = dict(use_bound=bool(dec["use_confidence_bound"]), confidence=float(dec["confidence_level"]),
                   min_calls=int(dec["min_calls_per_side"]))
     sel_pos = select_threshold(oof["scores"], y, "positive", float(dec["target_ppv"]), **kwargs)
     sel_neg = select_threshold(oof["scores"], y, "negative", float(dec["target_npv"]), **kwargs)
-    forest = build_forest(cfg, seed, n_jobs=None if parallel else 1).fit(X, y)
+    forest = build_forest(cfg, seed, n_jobs=None if parallel else 1).fit(*_with_augmentation(X, y, aug))
     if counter:
         counter.step(translate("Fitting the final model"))
     thresholds = {
@@ -141,20 +151,20 @@ def fit_procedure(X, y, cfg, n_repeats, seed, importance=False, counter=None, pa
             "selection_negative": sel_neg, "oof": oof}
 
 
-def _outer_fold(X, y, train, test, cfg, seed):
+def _outer_fold(X, y, train, test, cfg, seed, aug=None):
     """One outer fold of the nested cross-validation (runs in a worker process)."""
-    proc = fit_procedure(X.iloc[train], y[train], cfg, int(cfg["validation"]["inner_repeats"]),
-                         seed, parallel=False)
+    proc = fit_procedure(X.iloc[train].reset_index(drop=True), y[train], cfg, int(cfg["validation"]["inner_repeats"]),
+                         seed, parallel=False, aug=aug)
     scores = proc["model"].predict_proba(X.iloc[test])[:, 1]
     decisions = decide(scores, X.iloc[test], proc["thresholds"], float(cfg["decision"]["max_missing_fraction"]))
     return test, scores, decisions, proc["thresholds"]
 
 
-def nested_evaluation(X, y, cfg, seed, counter=None) -> dict:
+def nested_evaluation(X, y, cfg, seed, counter=None, aug=None) -> dict:
     folds = _n_folds(y, cfg["validation"]["outer_folds"])
     outer = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed + 1000)
     splits = list(outer.split(X, y))
-    tasks = (delayed(_outer_fold)(X, y, tr, te, cfg, seed + 100 * (k + 1)) for k, (tr, te) in enumerate(splits))
+    tasks = (delayed(_outer_fold)(X, y, tr, te, cfg, seed + 100 * (k + 1), aug) for k, (tr, te) in enumerate(splits))
     scores = np.full(len(y), np.nan)
     decisions = np.full(len(y), INCONCLUSIVE)
     fold_thresholds = [None] * folds
@@ -199,8 +209,43 @@ def _select_training_rows(prepared: PreparedData, cfg: dict) -> tuple[np.ndarray
     return np.flatnonzero(keep), exclusions, messages
 
 
+def _augmentation_name(cfg: dict, augmentation) -> str:
+    if augmentation is not None:
+        return "uploaded file"
+    return str((cfg.get("augmentation") or {}).get("file", ""))
+
+
+def _augmentation_data(cfg: dict, features: list[str], n_real: int, seed: int, augmentation=None):
+    """Extra TRAINING patients for small cohorts (config.yaml -> augmentation), or None.
+
+    The augmentation patients (e.g. literature-based synthetic patients) only enlarge the training sets
+    of every fit. Cross-validation folds, out-of-fold scores, threshold selection and the nested estimate
+    use the real patients only, so the PPV/NPV proof is never based on synthetic patients.
+    Their number is capped at ``ratio`` x the number of real patients.
+    """
+    section = cfg.get("augmentation") or {}
+    if augmentation is None:
+        if not section.get("enabled"):
+            return None
+        from .config import PROJECT_ROOT
+        from .data import load_patient_file
+
+        augmentation = load_patient_file(PROJECT_ROOT / section["file"], cfg, require_label=True)
+    labels = augmentation.labels.to_numpy(float)
+    ptau = augmentation.table["ptau217"].to_numpy(float)
+    keep = ~np.isnan(labels) & ~np.isnan(ptau) & in_grey_zone(ptau, cfg)
+    table = augmentation.table[keep].reset_index(drop=True)
+    y_aug = labels[keep].astype(int)
+    k = min(len(y_aug), int(round(float(section.get("ratio", 1.0)) * n_real)))
+    if k == 0:
+        return None
+    idx = np.random.default_rng(seed + 55).choice(len(y_aug), k, replace=False)
+    return table.iloc[idx].reindex(columns=features).reset_index(drop=True), y_aug[idx]
+
+
 def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
-                progress: Progress = None, source_name: str = "", model_type_name: str | None = None) -> dict:
+                progress: Progress = None, source_name: str = "", model_type_name: str | None = None,
+                augmentation: PreparedData | None = None) -> dict:
     """Train the full procedure and return a model bundle (a plain dict).
 
     ``model_type_name`` (e.g. "logistic_regression") overrides cfg["model_type"]; see estimators.py.
@@ -243,7 +288,12 @@ def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
         total += _n_folds(y, val["outer_folds"])
     counter = _Counter(total, progress)
 
-    proc = fit_procedure(X, y, cfg, int(val["cv_repeats"]), seed,
+    aug = _augmentation_data(cfg, features, len(y), seed, augmentation)
+    if aug is not None:
+        messages.append(translate("Training augmented with {k} literature-based synthetic patients ({file}); "
+                                  "thresholds and validation use the {n} real patients only.",
+                                  k=len(aug[1]), file=_augmentation_name(cfg, augmentation), n=len(y)))
+    proc = fit_procedure(X, y, cfg, int(val["cv_repeats"]), seed, aug=aug,
                          importance=bool(val.get("permutation_importance", True)), counter=counter)
     oof_scores = proc["oof"]["scores"]
     max_missing = float(cfg["decision"]["max_missing_fraction"])
@@ -255,7 +305,7 @@ def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
     fpr, tpr, _ = roc_curve(y, oof_scores)
     fpr_p, tpr_p, _ = roc_curve(y, X["ptau217"].to_numpy(float))
 
-    nested_result = nested_evaluation(X, y, cfg, seed, counter) if nested else None
+    nested_result = nested_evaluation(X, y, cfg, seed, counter, aug=aug) if nested else None
 
     for side, key in (("positive", "selection_positive"), ("negative", "selection_negative")):
         if proc["thresholds"][side] is None:
@@ -323,6 +373,8 @@ def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
         "training_ranges": {f: [float(np.nanmin(X[f])), float(np.nanmax(X[f]))] for f in features},
         "oof_scores": oof_scores,
         "oof_labels": y,
+        "background": background_sample(X, seed),              # reference patients for SHAP explanations
+        "training_ptau217": X["ptau217"].to_numpy(),            # for the p-tau217-alone decision curve
         "nested_scores": None if nested_result is None else nested_result["scores"],
         "nested_decisions": None if nested_result is None else nested_result["decisions"],
         "predictions": predictions,

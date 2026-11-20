@@ -16,18 +16,38 @@ safely**.
                                        └─ otherwise     → INCONCLUSIVE → lumbar puncture (as before)
 ```
 
-The LP result is the label used to train the model. The model uses 10 variables: p-tau217, the
-Aβ42/Aβ40 and p-tau217/Aβ42 ratios, APOE ε4, clinical stage, eGFR, anaemia, triglycerides,
-hypertension and stroke (see section 4). Others can be added in `config.yaml`.
+The LP result is the label used to train the model. The models use **8 routine variables**: p-tau217, APOE ε4,
+clinical stage, eGFR, anaemia, triglycerides, hypertension and stroke (see section 4). **Plasma Aβ42/Aβ40 are
+switched off** because the Coimbra cohort does not measure them; set `use_as_feature: true` in `config.yaml` to
+use them again.
 
-**Six interchangeable models.** A switch at the top right of the app selects the model that
-computes the score: **Random Forest** (default), **Logistic Regression**, **Gradient Boosting**,
-**Extra Trees**, **Support Vector Machine** or an **Ensemble** (RF + LR + GB). Every model is
-trained with the same procedure, must meet the same 90 % PPV / 90 % NPV rule proven with 95 %
-confidence, and has the same safety checks. The **Compare models** tab shows them side by side.
-On the synthetic data, Logistic Regression avoids the most lumbar punctures (59 % vs 38 % for the
-Random Forest in nested validation), and all six meet the 90 % targets on 6,000 independent
-synthetic patients. Details: [`docs/MODEL_COMPARISON.md`](docs/MODEL_COMPARISON.md).
+**Eight interchangeable models.** A switch at the top right of the app selects the model that computes the score:
+- Random Forest (default)
+- Logistic Regression
+- Spline Logistic Regression (GAM-like)
+- Gradient Boosting
+- XGBoost
+- Extra Trees
+- Support Vector Machine
+- an Ensemble
+
+Every model is trained with the same procedure, must meet the same 90 % PPV / 90 % NPV rule proven with 95 %
+confidence, and has the same safety checks. The app also offers:
+- **SHAP explanations** per patient (why this score), in a collapsed section under the results;
+- a **global SHAP view** in the model report;
+- **decision curve analysis** and a side-by-side comparison in the **Compare models** tab.
+
+**Realistic default data (generator version 2).** The shipped dataset combines:
+- real clinical covariates (Cardiovascular Health Study);
+- real CSF amyloid data (Knight ADRC);
+- non-linear, literature-based biology: a threshold effect of kidney function, p-tau217 rising sigmoidally with
+  amyloid load, and an APOE dose effect that changes with age.
+
+**Honest result:** with these 8 routine variables and 600 grey-zone patients, no model can *prove* 90 % PPV or NPV
+(the grey-zone AUC tops out at about 0.80, whichever model is used). So the shipped models classify every
+grey-zone patient as INCONCLUSIVE. Reaching the target needs either many more patients (about 5,000-10,000) or a
+more informative variable. Details: [`docs/MODEL_COMPARISON.md`](docs/MODEL_COMPARISON.md); for small cohorts:
+[`docs/SMALL_COHORTS.md`](docs/SMALL_COHORTS.md).
 
 > **Research prototype, not a medical device.** Every number shown by the demo comes from
 > **synthetic (artificial) patients**. Before any clinical use, the procedure must be validated
@@ -239,7 +259,7 @@ every simulated vs published value, and every assumption.
 Download `templates/patient_data_template.xlsx` (or use the button in the app). Each patient goes on one row of the sheet
 **Patients**:
 
-Only **15 columns** (plus the LP result for training). The model uses **10 variables**; the other
+Only **13 columns** (plus the LP result for training). The models use **8 variables**; the other
 columns are inputs from which a model variable is computed.
 
 | column | unit | used as | notes |
@@ -251,8 +271,6 @@ columns are inputs from which a model variable is computed.
 | `triglycerides` | mg/dL | **model** | routine lipid panel |
 | `hemoglobin` | g/dL | input | the model uses `anemia` (WHO: < 12 women, < 13 men), computed from it |
 | `ptau217` | pg/mL | **model** | **required**; defines the grey zone |
-| `ab42`, `ab40` | pg/mL | input | plasma Lumipulse, same tube; give the **Aβ42/40** and **p-tau217/Aβ42** ratios (both **model**) |
-| `ab42_ab40_ratio` | ratio | **model** | optional if ab42/ab40 are given |
 | `apoe4` | 0/1/2 or `E3/E4` | **model** | number of ε4 alleles |
 | `hypertension` | yes/no | **model** | known diagnosis **or** on antihypertensive medication |
 | `stroke` | yes/no | **model** | history of stroke/TIA |
@@ -295,6 +313,10 @@ The reader is forgiving and records every correction in the output:
 | 7 | hypertension | 0.890 |
 | 8 | anaemia | 0.891 |
 | 9–14 | MTA, heart disease, sleep apnoea, diabetes, weight loss, HDL | 0.892–0.896 (plateau) |
+
+**Update (2026-11-20): Aβ42/Aβ40 are no longer used** (not measured in the Coimbra cohort): the model now uses
+the 8 remaining variables. On the realistic version-2 data, adding age and sex as model variables did not help
+(cross-validated AUC 0.800 → 0.802). The text below describes the earlier selection on version-1 data.
 
 The chosen **compact 10** set has the same AUC as all 23 variables (0.895 vs 0.890). It is the
 first 8 steps, plus the p-tau217/Aβ42 ratio, which was kept on literature grounds. Education, BMI,

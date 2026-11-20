@@ -299,6 +299,16 @@ def write_report(bundle: dict, out_dir: str | Path) -> dict[str, Path]:
         plot_importance(r, paths["importance"])
     else:
         paths.pop("importance")
+    if bundle.get("background") is not None:                 # global SHAP picture (once, at training)
+        try:
+            from .explain import shap_values, summary_png
+
+            sample = bundle["background"][bundle["features"]].head(60)
+            values, _ = shap_values(bundle, sample, max_background=40)
+            paths["shap"] = out_dir / "shap_summary.png"
+            paths["shap"].write_bytes(summary_png(bundle, values, sample))
+        except Exception:                                    # explanations are optional
+            pass
     paths["markdown"] = out_dir / "report.md"
     paths["markdown"].write_text(markdown_report(bundle), encoding="utf-8")
     paths["json"] = out_dir / "report.json"

@@ -1,21 +1,19 @@
 {
-  "trained": "2026-11-20T10:26:30",
+  "trained": "2026-11-20T11:26:03",
   "model_type": "ensemble",
   "training_file": "data/default_training/synthetic_training_dataset.xlsx",
-  "training_file_sha256": "90607fe988031a7054501d7a83ceb260b4b6ce756de9b378360d9cba83441f98",
+  "training_file_sha256": "4e604a4732f3933e08db3e03778ab0d85fc78b7473958e10ec06c9cbf96071be",
   "rows_in_file": 600,
   "training_patients": 600,
   "thresholds": {
-    "positive": 0.76,
-    "negative": 0.18
+    "positive": null,
+    "negative": null
   },
   "features": [
     "egfr",
     "triglycerides",
     "anemia",
     "ptau217",
-    "ab42_ab40_ratio",
-    "ptau217_ab42_ratio",
     "apoe4",
     "hypertension",
     "stroke",
@@ -27,5 +25,5 @@
     "numpy": "2.5.3",
     "pandas": "3.0.5"
   },
-  "written": "2026-11-20T10:26:31"
+  "written": "2026-11-20T11:26:04"
 }

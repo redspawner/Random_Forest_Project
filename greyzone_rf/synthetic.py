@@ -198,16 +198,26 @@ def _add_missingness(df: pd.DataFrame, rng) -> pd.DataFrame:
     return df
 
 
+def simulator(version: int = 1):
+    """The population simulator: 1 = original (mostly additive), 2 = non-linear (synthetic_v2.py)."""
+    if version == 2:
+        from .synthetic_v2 import simulate_memory_clinic_v2
+
+        return simulate_memory_clinic_v2
+    return simulate_memory_clinic
+
+
 def grey_zone_cohort(n_patients: int, lower: float = 0.14, upper: float = 0.43,
-                     seed: int = 0, prefix: str = "SYN", real: bool = False) -> pd.DataFrame:
+                     seed: int = 0, prefix: str = "SYN", real: bool = False, version: int = 1) -> pd.DataFrame:
     """Return ``n_patients`` synthetic patients whose p-tau217 is in the grey zone."""
+    simulate = simulator(version)
     rng = np.random.default_rng(seed + 1)
     chunks, total = [], 0
     batch = 0
     while total < n_patients:
         size = max(4 * n_patients, 2000)
         base = real_clinical_base(size, seed=seed + 17 * batch, chs=_chs_cache()) if real else None
-        pop = simulate_memory_clinic(size, seed=seed + 17 * batch, real_base=base)
+        pop = simulate(size, seed=seed + 17 * batch, real_base=base)
         grey = pop[(pop["ptau217"] >= lower) & (pop["ptau217"] <= upper)]
         chunks.append(grey)
         total += len(grey)
@@ -219,14 +229,14 @@ def grey_zone_cohort(n_patients: int, lower: float = 0.14, upper: float = 0.43,
 
 
 def demo_new_patients(n_grey: int = 40, seed: int = 999, lower: float = 0.14,
-                      upper: float = 0.43, real: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
+                      upper: float = 0.43, real: bool = False, version: int = 1) -> tuple[pd.DataFrame, pd.DataFrame]:
     """New (unlabelled) patients for the prediction demo, plus a hidden answer key.
 
     Besides grey-zone patients, three special rows show the safety checks:
     one below the grey zone, one above it, and one with an impossible haemoglobin (45 g/dL).
     """
-    df = grey_zone_cohort(n_grey, lower, upper, seed=seed, prefix="NEW", real=real)
-    extra = simulate_memory_clinic(400, seed=seed + 5,
+    df = grey_zone_cohort(n_grey, lower, upper, seed=seed, prefix="NEW", real=real, version=version)
+    extra = simulator(version)(400, seed=seed + 5,
                                    real_base=real_clinical_base(400, seed + 5, chs=_chs_cache()) if real else None)
     low = extra[extra["ptau217"] < lower].iloc[[0]]
     high = extra[extra["ptau217"] > upper].iloc[[0]]

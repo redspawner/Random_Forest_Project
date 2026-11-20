@@ -608,4 +608,90 @@ PT = {
         'Descarregar a comparação (Excel)',
     '_model_comparison':
         '_comparacao_modelos',
+
+    # --- SHAP, decision curves, augmentation ----------------------------------------------------------
+    'Training augmented with {k} literature-based synthetic patients ({file}); thresholds and validation use the {n} real patients only.':
+        'Treino aumentado com {k} doentes sintéticos baseados na literatura ({file}); os limiares e a validação usam apenas os {n} doentes reais.',
+    'LP for everyone':
+        'PL para todos',
+    'LP for no one':
+        'PL para ninguém',
+    'p-tau217 alone':
+        'p-tau217 isolada',
+    'Net benefit':
+        'Benefício líquido',
+    'Decision curves (cross-validated scores)':
+        'Curvas de decisão (pontuações de validação cruzada)',
+    'Net lumbar punctures avoided per 100 patients':
+        'Punções lombares evitadas (líquidas) por 100 doentes',
+    'net LPs avoided per 100':
+        'PL evitadas líquidas por 100',
+    'missing':
+        'em falta',
+    '{n} e4 allele(s)':
+        '{n} alelo(s) e4',
+    'Model score (dashed: average patient {b:.2f}; solid: this patient {s:.2f}; dotted: NEGATIVE / POSITIVE thresholds)':
+        'Pontuação do modelo (tracejado: doente médio {b:.2f}; contínuo: este doente {s:.2f}; ponteado: limiares NEGATIVO / POSITIVO)',
+    'Mean |SHAP| (average change of the score)':
+        '|SHAP| médio (alteração média da pontuação)',
+    'SHAP value per patient (red = high value of the variable, blue = low, grey = missing)':
+        'Valor SHAP por doente (vermelho = valor alto da variável, azul = baixo, cinzento = em falta)',
+    'What drives the {model} score (SHAP, {n} training patients)':
+        'O que determina a pontuação do {model} (SHAP, {n} doentes de treino)',
+    'Variable':
+        'Variável',
+    'Patient value':
+        'Valor do doente',
+    'Contribution to the score':
+        'Contribuição para a pontuação',
+    'Effect':
+        'Efeito',
+    'Average score (base)':
+        'Pontuação média (base)',
+    'Main factors':
+        'Principais fatores',
+    'raises the score (towards POSITIVE)':
+        'aumenta a pontuação (para POSITIVO)',
+    'lowers the score (towards NEGATIVE)':
+        'diminui a pontuação (para NEGATIVO)',
+    'no effect':
+        'sem efeito',
+    'Why this score? Explanation per patient (SHAP)':
+        'Porquê esta pontuação? Explicação por doente (SHAP)',
+    "SHAP values show how much each variable moved this patient's score away from the score of an average training patient. Positive values push towards POSITIVE, negative towards NEGATIVE. They explain the model, not the biology.":
+        'Os valores SHAP mostram quanto cada variável afastou a pontuação deste doente da pontuação de um doente de treino médio. Valores positivos empurram para POSITIVO, negativos para NEGATIVO. Explicam o modelo, não a biologia.',
+    "Average training patient: {b:.3f}  +  sum of the contributions: {s:+.3f}  =  this patient's score {score:.3f}.":
+        'Doente de treino médio: {b:.3f}  +  soma das contribuições: {s:+.3f}  =  pontuação deste doente {score:.3f}.',
+    'Compute explanations for all patients (Excel)':
+        'Calcular as explicações de todos os doentes (Excel)',
+    'This model file has no reference patients for explanations. Re-train it to enable SHAP.':
+        'Este ficheiro de modelo não tem doentes de referência para as explicações. Volte a treiná-lo para ativar o SHAP.',
+    'No patient received a model score (outside the grey zone or data problems).':
+        'Nenhum doente recebeu pontuação do modelo (fora da zona cinzenta ou problemas nos dados).',
+    'Download the explanations (Excel)':
+        'Descarregar as explicações (Excel)',
+    'Global explanation: what drives the score (SHAP)':
+        'Explicação global: o que determina a pontuação (SHAP)',
+    'Decision curve analysis':
+        'Análise de curvas de decisão',
+    'Computing the explanation ...':
+        'A calcular a explicação ...',
+    "Left: average size of each variable's effect on the score. Right: one dot per reference patient; dots to the right raised that patient's score. Colour = the variable's value (red high, blue low). Unlike permutation importance, this also shows the direction and the shape of each effect.":
+        'Esquerda: tamanho médio do efeito de cada variável na pontuação. Direita: um ponto por doente de referência; pontos à direita aumentaram a pontuação desse doente. Cor = valor da variável (vermelho alto, azul baixo). Ao contrário da importância por permutação, mostra também o sentido e a forma de cada efeito.',
+    'What does the decision curve show?':
+        'O que mostra a curva de decisão?',
+    '_shap_explanations':
+        '_explicacoes_shap',
+    'Computing SHAP values for the reference patients (once) ...':
+        'A calcular os valores SHAP dos doentes de referência (só uma vez) ...',
+    '**Decision curve analysis asks one question: if we act on this score, do patients gain more than they lose,\ncompared with simply doing a lumbar puncture in everyone?** AUC cannot answer it, because AUC ignores what a wrong\ndecision costs.\n\n- **Threshold probability (x-axis).** "I would keep the LP (treat the patient as possibly amyloid-positive) if the\n  probability of a positive LP is at least pt." Choosing pt is choosing an exchange rate: at pt = 0.10, missing one\n  amyloid-positive patient is judged as bad as 9 unnecessary LPs. This is the same trade-off as an NPV of 90 %\n  (dotted line).\n- **Net benefit (left).** True positives found per patient, minus false positives weighted by that exchange rate:\n  NB = TP/n - FP/n x pt/(1 - pt). It is expressed in "true positives per patient, net of harm". The curve of a useful\n  model lies above both reference lines: **LP for everyone** (today\'s practice in the grey zone) and **LP for no\n  one**.\n- **Net LPs avoided per 100 patients (right).** The clinically direct reading: how many lumbar punctures the score\n  saves per 100 grey-zone patients, after subtracting the amyloid-positive patients it would miss, valued at the\n  chosen exchange rate. 0 = no better than LP for everyone; negative = worse.\n- **How it complements the 90 % / 95 % rule.** The safety rule decides *which* patients get an answer. The decision\n  curve shows whether acting on the score is worthwhile across all reasonable trade-offs, and lets clinicians\n  choose their own trade-off. It uses each model\'s cross-validated scores as probabilities, so it also penalises\n  badly calibrated models.\n- Reference: Vickers & Elkin, *Med Decis Making* 2006; Vickers et al., *Diagn Progn Res* 2019. DCA is part of\n  the TRIPOD+AI reporting recommendations for clinical prediction models.\n':
+        '**A análise de curvas de decisão responde a uma pergunta: se agirmos com base nesta pontuação, os doentes\nganham mais do que perdem, em comparação com fazer simplesmente punção lombar a todos?** A AUC não responde a isto,\nporque ignora o custo de uma decisão errada.\n\n- **Probabilidade limiar (eixo x).** "Mantinha a PL (tratava o doente como possivelmente amiloide-positivo) se a\n  probabilidade de PL positiva fosse pelo menos pt." Escolher pt é escolher uma taxa de troca: com pt = 0,10, falhar um\n  doente amiloide-positivo é considerado tão mau como 9 PL desnecessárias. É o mesmo compromisso que um VPN de 90 %\n  (linha ponteada).\n- **Benefício líquido (esquerda).** Verdadeiros positivos encontrados por doente, menos os falsos positivos pesados\n  por essa taxa de troca: BL = VP/n - FP/n x pt/(1 - pt). Exprime-se em "verdadeiros positivos por doente, líquidos de\n  dano". A curva de um modelo útil fica acima das duas linhas de referência: **PL para todos** (a prática atual na\n  zona cinzenta) e **PL para ninguém**.\n- **PL evitadas líquidas por 100 doentes (direita).** A leitura clínica direta: quantas punções lombares a pontuação\n  poupa por 100 doentes da zona cinzenta, depois de descontar os doentes amiloide-positivos que falharia, valorizados\n  à taxa de troca escolhida. 0 = não é melhor do que PL para todos; negativo = pior.\n- **Como complementa a regra dos 90 % / 95 %.** A regra de segurança decide *que* doentes recebem resposta. A curva de\n  decisão mostra se vale a pena agir com base na pontuação para todos os compromissos razoáveis, e deixa os clínicos\n  escolherem o seu. Usa as pontuações de validação cruzada de cada modelo como probabilidades, por isso também\n  penaliza modelos mal calibrados.\n- Referências: Vickers & Elkin, *Med Decis Making* 2006; Vickers et al., *Diagn Progn Res* 2019. A análise de curvas\n  de decisão faz parte das recomendações TRIPOD+AI para modelos de predição clínica.\n',
+    'No threshold could be certified with this training data (PPV/NPV >= {ppv:.0%} / {npv:.0%} with {conf:.0%} confidence): every grey-zone patient will be INCONCLUSIVE. More patients or more informative variables are needed; the scores, SHAP explanations and decision curves still show what the model has learnt.':
+        'Não foi possível certificar nenhum limiar com estes dados de treino (VPP/VPN >= {ppv:.0%} / {npv:.0%} com {conf:.0%} de confiança): todos os doentes da zona cinzenta ficarão INCONCLUSIVOS. São precisos mais doentes ou variáveis mais informativas; as pontuações, as explicações SHAP e as curvas de decisão continuam a mostrar o que o modelo aprendeu.',
+    'Threshold probability pt':
+        'Probabilidade limiar pt',
+    "Net LPs avoided vs 'LP for everyone'":
+        "PL evitadas líquidas face a 'PL para todos'",
+    'Dotted line: pt = 1 - NPV target ({pt:.2f}): missing one amyloid-positive patient counts as much as {k:.0f} unnecessary LPs.':
+        'Linha ponteada: pt = 1 - VPN alvo ({pt:.2f}): falhar um doente amiloide-positivo conta tanto como {k:.0f} PL desnecessárias.',
 }

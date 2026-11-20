@@ -1,6 +1,6 @@
 {
   "model_type": "logistic_regression",
-  "created": "2026-11-20T10:25:18",
+  "created": "2026-11-20T11:24:45",
   "source_file": "synthetic_training_dataset.xlsx",
   "n_train": 600
 }

@@ -33,6 +33,35 @@ later with a Coimbra cohort. Answer in English. The user's own guidelines overri
   rejected 2,500 as unrealistic). `train.py --default` retrains it. The app retrains it automatically if
   it is missing or incompatible.
 
+## Update 2026-11-20 (second round): realistic data, no Aβ, SHAP, DCA, XGBoost
+- **Aβ42/Aβ40 are switched off** (not measured in Coimbra). `use_as_feature: false` and `in_template: false`
+  for ab42, ab40 and both ratios. The models use 8 variables; the template has 13 columns.
+- **New default dataset: generator v2** (`greyzone_rf/synthetic_v2.py`):
+  - real CHS covariates;
+  - real Knight ADRC CSF data (APOE × clinical status amyloid odds ratios, `data/external/`);
+  - non-linear biology: kidney hinge, sigmoid p-tau217 vs amyloid load, APOE dose × age, stage mix.
+  - Calibration in `DATASET_CARD.md`: p-tau217 AUC 0.953, grey zone 34 %, NPV < 0.14 = 0.94, PPV > 0.43 =
+    0.98, anaemia ratio 1.39.
+  - v1 stays available with `version=1`.
+- **The user chose to keep strict 90/90 + 95 % on the realistic data.** Result: no model certifies any
+  threshold with 600 patients (grey-zone AUC ceiling about 0.80 with these variables), so every grey-zone
+  patient is INCONCLUSIVE.
+  - About 10,000 patients would be needed (≈ 36 % of LPs avoided with XGBoost at n = 10,000).
+  - With Aβ kept, v2 reaches AUC about 0.83, still with very few certified calls.
+  - The app sidebar warns when no threshold is certified.
+- **New models:** XGBoost (`xgboost-cpu`) and Spline Logistic Regression (GAM-like). Eight types are in the
+  switch. Settings sweep: CV AUC 0.78–0.81 for every setting; the data, not the model, limit performance.
+- **SHAP** (`greyzone_rf/explain.py`, `shap` 0.54):
+  - exact Shapley values of the score versus 100 background training patients, stored in the bundle;
+  - shown as a collapsed per-patient section (waterfall + table + all-patients Excel) and a global summary in
+    the model report.
+- **Decision curve analysis** in Compare models (`compare.decision_curves`): net benefit and net LPs avoided
+  per 100 patients, with an explanation text.
+- **Small cohorts:** training-only augmentation (`config.yaml → augmentation`). It never counts for the
+  thresholds. See `docs/SMALL_COHORTS.md`: a matched literature prior lets 100 real patients reach AUC 0.79
+  instead of 0.74; a mismatched prior hurts from 300 patients on.
+- Fixed: `data/external/` was git-ignored. It is now tracked (needed to regenerate the data and for the tests).
+
 ## Model types (added 2026-11-20)
 - **Switch at the top right** of the app: Random Forest (default, unchanged), Logistic Regression,
   Gradient Boosting (HistGB), Extra Trees, SVM (Platt) and Ensemble (RF+LR+GB).

@@ -92,7 +92,8 @@ def test_template_round_trip(cfg):
     p = prepare_table(df, cfg, require_label=True)     # the example row must be valid
     assert p.n == 1 and not p.row_issues[0]
     assert p.labels[0] == 1
-    assert set(p.columns_found) >= {"age", "sex", "ptau217", "egfr", "clinical_stage", "ab42", "ab40"}
+    assert set(p.columns_found) >= {"age", "sex", "ptau217", "egfr", "clinical_stage", "apoe4", "hemoglobin"}
+    assert "ab42" not in p.columns_found              # Abeta not measured in the target cohort: not in template
 
 
 def test_grey_zone(cfg):

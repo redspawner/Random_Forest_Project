@@ -36,7 +36,7 @@ jobs:
 
       - name: Test - libraries import with the bundled Python
         working-directory: dist/${{ matrix.folder }}/app
-        run: ..\python\python.exe -c "import numpy, pandas, scipy, sklearn, streamlit, openpyxl, yaml, matplotlib; print('imports OK', sklearn.__version__)"
+        run: ..\python\python.exe -c "import numpy, pandas, scipy, sklearn, streamlit, openpyxl, yaml, matplotlib, shap, xgboost; print('imports OK', sklearn.__version__)"
 
       - name: Test - every shipped model (RF, LR, GB, ...) loads without re-training
         working-directory: dist/${{ matrix.folder }}/app

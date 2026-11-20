@@ -27,7 +27,7 @@ from .report import GRID, INK, INK_2, _fig  # noqa: E402
 from .stats import NEGATIVE, POSITIVE  # noqa: E402
 
 # One colour per model (validated categorical palette, same family as the report figures)
-COLORS = ["#2a78d6", "#eb6834", "#1f9e6e", "#8a5cc7", "#c0841b", "#d0457a", "#4a4a48"]
+COLORS = ["#2a78d6", "#eb6834", "#1f9e6e", "#8a5cc7", "#c0841b", "#d0457a", "#4a4a48", "#0f8fa0", "#9a6a3a"]
 
 
 def _nested_arrays(bundle: dict) -> tuple[np.ndarray | None, np.ndarray | None]:
@@ -225,3 +225,134 @@ def display_names(bundles_by_type: dict[str, dict]) -> dict[str, dict]:
 
 def is_finite(x) -> bool:
     return x is not None and not (isinstance(x, float) and math.isnan(x))
+
+
+# ---------------------------------------------------------------------------
+# Decision curve analysis (Vickers & Elkin 2006; Vickers et al. 2019)
+# ---------------------------------------------------------------------------
+#
+# The question DCA answers: "if we act on this score, do patients gain more than they lose,
+# compared with doing a lumbar puncture in everyone?"
+#
+# Pick a threshold probability pt. Choosing pt says how many unnecessary actions you accept to catch
+# one more true case: pt / (1 - pt) is the exchange rate. Here the action is "treat the patient as
+# amyloid-positive / keep the lumbar puncture". pt = 0.10 means missing one amyloid-positive patient
+# is judged as bad as 9 unnecessary LPs, the same trade-off as the NPV >= 90 % target.
+#
+#     net benefit(pt) = TP / n  -  FP / n * pt / (1 - pt)
+#
+# Strategies compared: each model (score >= pt), p-tau217 alone (turned into a probability by
+# cross-validated logistic regression), "LP for everyone" and "LP for no one".
+# Net LP reduction per 100 patients = (NB_model - NB_all) / (pt / (1 - pt)) * 100. It is the number
+# of lumbar punctures avoided per 100 patients without missing more amyloid-positive patients than
+# the chosen exchange rate accepts.
+DCA_THRESHOLDS = np.round(np.arange(0.02, 0.61, 0.01), 2)
+
+
+def net_benefit(y, p, thresholds=DCA_THRESHOLDS) -> np.ndarray:
+    y = np.asarray(y, int)
+    p = np.asarray(p, float)
+    n = len(y)
+    out = []
+    for t in thresholds:
+        act = p >= t
+        tp = np.sum(act & (y == 1))
+        fp = np.sum(act & (y == 0))
+        out.append(tp / n - fp / n * t / (1 - t))
+    return np.array(out)
+
+
+def _ptau_probability(bundle: dict) -> np.ndarray | None:
+    """Cross-validated probability from p-tau217 alone (logistic regression on log p-tau217)."""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import StratifiedKFold, cross_val_predict
+
+    background = bundle.get("training_ptau217")
+    if background is None:
+        return None
+    x = np.log(np.clip(np.asarray(background, float), 1e-6, None)).reshape(-1, 1)
+    y = np.asarray(bundle["oof_labels"], int)
+    cv = StratifiedKFold(5, shuffle=True, random_state=0)
+    return cross_val_predict(LogisticRegression(), x, y, cv=cv, method="predict_proba")[:, 1]
+
+
+def decision_curves(bundles: dict[str, dict]) -> pd.DataFrame:
+    """Net benefit and net LP reduction per 100 patients for every model and the reference strategies."""
+    first = next(iter(bundles.values()))
+    y = np.asarray(first["oof_labels"], int)
+    prev = y.mean()
+    odds = DCA_THRESHOLDS / (1 - DCA_THRESHOLDS)
+    nb_all = prev - (1 - prev) * odds
+    rows = {"threshold": DCA_THRESHOLDS, tr("LP for everyone"): nb_all, tr("LP for no one"): np.zeros_like(odds)}
+    ptau = _ptau_probability(first)
+    if ptau is not None:
+        rows[tr("p-tau217 alone")] = net_benefit(y, ptau)
+    for name, b in bundles.items():
+        rows[name] = net_benefit(b["oof_labels"], b["oof_scores"])
+    frame = pd.DataFrame(rows)
+    for col in [c for c in frame.columns if c not in ("threshold", tr("LP for everyone"), tr("LP for no one"))]:
+        frame[f"{col} | {tr('net LPs avoided per 100')}"] = (frame[col] - nb_all) / odds * 100
+    return frame
+
+
+def dca_figure(bundles: dict[str, dict], target_npv: float = 0.90) -> bytes:
+    curves = decision_curves(bundles)
+    pt = curves["threshold"]
+    fig, (ax1, ax2) = _fig(1, 2, figsize=(10.6, 4.4))
+    strategies = [c for c in curves.columns if "|" not in c and c != "threshold"]
+    ymax = max(curves[strategies].to_numpy().max(), 0.05)
+    special = {tr("LP for everyone"): (INK_2, "-", 1.2), tr("LP for no one"): (GRID, "-", 1.2),
+               tr("p-tau217 alone"): (INK_2, "--", 1.5)}
+    models = [c for c in strategies if c not in special]
+    for name in strategies:
+        color, style, width = special.get(name, (COLORS[models.index(name) % len(COLORS)] if name in models
+                                                 else INK, "-", 2.0))
+        ax1.plot(pt, curves[name], color=color, linestyle=style, linewidth=width, label=name)
+        if name not in (tr("LP for everyone"), tr("LP for no one")):
+            ax2.plot(pt, curves[f"{name} | {tr('net LPs avoided per 100')}"], color=color, linestyle=style,
+                     linewidth=width, label=name)
+    marker = round(1 - target_npv, 2)
+    for ax in (ax1, ax2):
+        ax.axvline(marker, color=INK, linewidth=0.8, linestyle=":")
+        ax.set_xlabel(tr("Threshold probability pt"), color=INK_2, fontsize=9)
+        ax.set_xlim(pt.min(), pt.max())
+    ax1.set_ylim(-0.02, ymax * 1.1)
+    ax1.set_ylabel(tr("Net benefit"), color=INK_2, fontsize=9)
+    ax1.set_title(tr("Decision curves (cross-validated scores)"), color=INK, fontsize=10, loc="left")
+    fig.text(0.01, 0.005, tr("Dotted line: pt = 1 - NPV target ({pt:.2f}): missing one amyloid-positive patient "
+                             "counts as much as {k:.0f} unnecessary LPs.", pt=marker, k=(1 - marker) / marker),
+             color=INK_2, fontsize=8, ha="left", va="bottom")
+    ax1.legend(frameon=False, fontsize=7, loc="upper right", labelcolor=INK)
+    ax2.axhline(0, color=GRID, linewidth=1)
+    ax2.set_ylim(-5, max(5, float(np.nanmax(curves[[c for c in curves.columns if "|" in c]].to_numpy())) * 1.15))
+    ax2.set_ylabel(tr("Net lumbar punctures avoided per 100 patients"), color=INK_2, fontsize=9)
+    ax2.set_title(tr("Net LPs avoided vs 'LP for everyone'"), color=INK, fontsize=10, loc="left")
+    fig.tight_layout(rect=(0, 0.04, 1, 1))
+    return _png(fig)
+
+
+def dca_text() -> str:
+    """Plain-language explanation of the decision curves (shown in the app)."""
+    return tr("""**Decision curve analysis asks one question: if we act on this score, do patients gain more than they lose,
+compared with simply doing a lumbar puncture in everyone?** AUC cannot answer it, because AUC ignores what a wrong
+decision costs.
+
+- **Threshold probability (x-axis).** "I would keep the LP (treat the patient as possibly amyloid-positive) if the
+  probability of a positive LP is at least pt." Choosing pt is choosing an exchange rate: at pt = 0.10, missing one
+  amyloid-positive patient is judged as bad as 9 unnecessary LPs. This is the same trade-off as an NPV of 90 %
+  (dotted line).
+- **Net benefit (left).** True positives found per patient, minus false positives weighted by that exchange rate:
+  NB = TP/n - FP/n x pt/(1 - pt). It is expressed in "true positives per patient, net of harm". The curve of a useful
+  model lies above both reference lines: **LP for everyone** (today's practice in the grey zone) and **LP for no
+  one**.
+- **Net LPs avoided per 100 patients (right).** The clinically direct reading: how many lumbar punctures the score
+  saves per 100 grey-zone patients, after subtracting the amyloid-positive patients it would miss, valued at the
+  chosen exchange rate. 0 = no better than LP for everyone; negative = worse.
+- **How it complements the 90 % / 95 % rule.** The safety rule decides *which* patients get an answer. The decision
+  curve shows whether acting on the score is worthwhile across all reasonable trade-offs, and lets clinicians
+  choose their own trade-off. It uses each model's cross-validated scores as probabilities, so it also penalises
+  badly calibrated models.
+- Reference: Vickers & Elkin, *Med Decis Making* 2006; Vickers et al., *Diagn Progn Res* 2019. DCA is part of
+  the TRIPOD+AI reporting recommendations for clinical prediction models.
+""")
+

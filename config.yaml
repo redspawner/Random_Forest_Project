@@ -87,13 +87,27 @@ validation:
   permutation_importance: true
 
 # -----------------------------------------------------------------------------
+#  Small cohorts: training-only augmentation with literature-based synthetic patients
+# -----------------------------------------------------------------------------
+#  When enabled, every model fit (cross-validation folds, nested folds, final model) is trained on the
+#  real training patients PLUS up to `ratio` x n synthetic patients from `file` (with LP result).
+#  Folds, out-of-fold scores, the PPV/NPV thresholds and the nested estimate use the REAL patients
+#  only, so the 95 % proof is never based on synthetic patients. It can make the scores better with
+#  few patients if the synthetic data resemble reality; it can also make them worse if they do not.
+#  Check with the nested estimate (see docs/SMALL_COHORTS.md).
+augmentation:
+  enabled: false
+  file: data/default_training/synthetic_training_dataset.xlsx
+  ratio: 1.0
+
+# -----------------------------------------------------------------------------
 #  Models (switch at the top right of the app; comparison in the "Compare models" tab)
 # -----------------------------------------------------------------------------
 #  Every model type goes through the SAME procedure: repeated cross-validation, the PPV/NPV
 #  thresholds proven with the confidence above, nested validation, and the same safety checks
 #  (CHECK DATA, NOT APPLICABLE, red flags, too much missing data). Only the algorithm differs.
-#  The settings below were chosen in docs/MODEL_COMPARISON.md (nested validation on the default
-#  dataset + test on 6,000 independent synthetic patients). The Random Forest is unchanged.
+#  The settings below were chosen in docs/MODEL_COMPARISON.md (repeated-CV AUC on the default dataset,
+#  checked on 6,000 independent synthetic patients). The Random Forest is unchanged.
 #  Types offered in the app, in this order (remove a line to hide a model):
 model_types:
   - random_forest
@@ -101,6 +115,8 @@ model_types:
   - gradient_boosting
   - extra_trees
   - svm
+  - xgboost
+  - spline_logistic
   - ensemble
 
 models:
@@ -117,7 +133,7 @@ models:
     class_weight: null
   extra_trees:              # extremely randomised trees (handles missing values)
     n_estimators: 500
-    min_samples_leaf: 3
+    min_samples_leaf: 10
     max_features: sqrt
     class_weight: null
   svm:                      # RBF support vector machine, Platt-scaled to a 0-1 score
@@ -125,6 +141,19 @@ models:
     gamma: scale
     log_transform: true
     class_weight: null
+  xgboost:                  # XGBoost (CPU build), handles missing values natively
+    n_estimators: 200
+    learning_rate: 0.02
+    max_depth: 2            # shallow trees: interactions of at most 2 variables
+    min_child_weight: 5
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_lambda: 1.0
+    reg_alpha: 0.0
+  spline_logistic:          # logistic regression with spline terms (GAM-like): effects may bend,
+    C: 0.1                  # e.g. a kidney effect that starts only below eGFR ~60
+    n_knots: 3
+    degree: 3
   ensemble:                 # average of the members' scores (soft voting)
     members: [random_forest, logistic_regression, gradient_boosting]
 
@@ -219,6 +248,9 @@ features:
     aliases: [anemia_who, anaemia]
 
   # --- Plasma Alzheimer biomarkers (same Lumipulse tube as p-tau217) ---
+  # Abeta42 / Abeta40 (and the ratios computed from them) are NOT measured in the Coimbra cohort,
+  # so they are switched off: not in the template and not used by the models. Files that still
+  # contain them are accepted (the columns are read but ignored by the models).
   - name: ptau217
     description: Plasma p-tau217 (REQUIRED; defines the grey zone)
     unit: pg/mL
@@ -228,7 +260,8 @@ features:
     aliases: [p_tau217, plasma_ptau217, ptau_217]
 
   - name: ab42
-    use_as_feature: false   # input for the ratios; not a model variable itself
+    use_as_feature: false   # NOT AVAILABLE in the Coimbra cohort (set true to use it again)
+    in_template: false
     description: Plasma amyloid-beta 42
     unit: pg/mL
     min: 0.1
@@ -237,7 +270,8 @@ features:
     aliases: [abeta42, amyloid_beta_42, ab1_42, abeta_42]
 
   - name: ab40
-    use_as_feature: false   # input for the ratios; not a model variable itself
+    use_as_feature: false   # NOT AVAILABLE in the Coimbra cohort (set true to use it again)
+    in_template: false
     description: Plasma amyloid-beta 40
     unit: pg/mL
     min: 1
@@ -246,6 +280,8 @@ features:
     aliases: [abeta40, amyloid_beta_40, ab1_40, abeta_40]
 
   - name: ab42_ab40_ratio
+    use_as_feature: false   # NOT AVAILABLE in the Coimbra cohort (set true to use it again)
+    in_template: false
     description: Plasma Abeta42/Abeta40 ratio (left blank -> computed from ab42 and ab40)
     unit: ratio
     min: 0.005
@@ -254,10 +290,11 @@ features:
     aliases: [abeta42_40, ab42_40, ratio_ab42_ab40]
 
   - name: ptau217_ab42_ratio
+    use_as_feature: false   # NOT AVAILABLE in the Coimbra cohort (set true to use it again)
+    in_template: false
     description: p-tau217 / Abeta42 (computed automatically)
     unit: ratio
     compute: ptau217 / ab42
-    in_template: false
 
   - name: apoe4
     type: apoe4

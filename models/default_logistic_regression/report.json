@@ -1,5 +1,5 @@
 {
-  "created": "2026-11-20T10:25:18",
+  "created": "2026-11-20T11:24:45",
   "model_type": "logistic_regression",
   "model_label": "Logistic Regression",
   "source_file": "synthetic_training_dataset.xlsx",
@@ -9,17 +9,15 @@
     "missing_ptau217": 0,
     "outside_grey_zone": 0,
     "n_train": 600,
-    "n_lp_positive": 218,
-    "n_lp_negative": 382,
-    "prevalence": 0.36333333333333334
+    "n_lp_positive": 185,
+    "n_lp_negative": 415,
+    "prevalence": 0.30833333333333335
   },
   "features": [
     "egfr",
     "triglycerides",
     "anemia",
     "ptau217",
-    "ab42_ab40_ratio",
-    "ptau217_ab42_ratio",
     "apoe4",
     "hypertension",
     "stroke",
@@ -29,260 +27,234 @@
     "folds": 5,
     "repeats": 5,
     "repeat_aucs": [
-      0.8988424035736586,
-      0.9014842211441473,
-      0.8978937509006195,
-      0.8981219078726164,
-      0.8929463470867958
+      0.7973038098339303,
+      0.8092608270921524,
+      0.8004298274177792,
+      0.792992510582872,
+      0.8028394659719962
     ]
   },
   "auc_model": {
-    "value": 0.8994908497045967,
+    "value": 0.8018495604037772,
     "ci": [
-      0.8709709248268768,
-      0.9244182933184109
+      0.7569688012663168,
+      0.8434488985480353
     ]
   },
   "auc_ptau217_alone": {
-    "value": 0.7532482347855325,
+    "value": 0.7818300227938783,
     "ci": [
-      0.711570154528208,
-      0.7945334867513556
+      0.73743054906903,
+      0.8244955652299855
     ]
   },
   "thresholds": {
-    "positive": 0.86,
-    "negative": 0.18
+    "positive": null,
+    "negative": null
   },
   "threshold_details": {
-    "positive": {
-      "threshold": 0.86,
-      "n_called": 89,
-      "n_correct": 86,
-      "n_wrong": 3,
-      "predictive_value": 0.9662921348314607,
-      "lower_bound": 0.9151825967255676,
-      "passes": true
-    },
-    "negative": {
-      "threshold": 0.18,
-      "n_called": 276,
-      "n_correct": 258,
-      "n_wrong": 18,
-      "predictive_value": 0.9347826086956522,
-      "lower_bound": 0.9048208365501234,
-      "passes": true
-    }
+    "positive": null,
+    "negative": null
   },
   "oof_triage": {
     "n": 600,
-    "n_lp_positive": 218,
-    "n_lp_negative": 382,
-    "called_positive": 89,
-    "called_negative": 276,
-    "inconclusive": 235,
-    "true_positive": 86,
-    "false_positive": 3,
-    "true_negative": 258,
-    "false_negative": 18,
+    "n_lp_positive": 185,
+    "n_lp_negative": 415,
+    "called_positive": 0,
+    "called_negative": 0,
+    "inconclusive": 600,
+    "true_positive": 0,
+    "false_positive": 0,
+    "true_negative": 0,
+    "false_negative": 0,
     "ppv": {
-      "k": 86,
-      "n": 89,
-      "value": 0.9662921348314607,
+      "k": 0,
+      "n": 0,
+      "value": NaN,
       "ci": [
-        0.9046384343936804,
-        0.9929939431663289
+        NaN,
+        NaN
       ]
     },
     "npv": {
-      "k": 258,
-      "n": 276,
-      "value": 0.9347826086956522,
+      "k": 0,
+      "n": 0,
+      "value": NaN,
       "ci": [
-        0.8988849111178622,
-        0.9608933338663553
+        NaN,
+        NaN
       ]
     },
     "resolved": {
-      "k": 365,
+      "k": 0,
       "n": 600,
-      "value": 0.6083333333333333,
+      "value": 0.0,
       "ci": [
-        0.5679874751981393,
-        0.6476073795024757
+        0.0,
+        0.006129271330669258
       ]
     },
     "accuracy_resolved": {
-      "k": 344,
-      "n": 365,
-      "value": 0.9424657534246575,
+      "k": 0,
+      "n": 0,
+      "value": NaN,
       "ci": [
-        0.9133949613714328,
-        0.9640363168555255
+        NaN,
+        NaN
       ]
     },
     "positives_ruled_in": {
-      "k": 86,
-      "n": 218,
-      "value": 0.3944954128440367,
+      "k": 0,
+      "n": 185,
+      "value": 0.0,
       "ci": [
-        0.32915909497074325,
-        0.4627423650146207
+        0.0,
+        0.01974240414218442
       ]
     },
     "negatives_ruled_out": {
-      "k": 258,
-      "n": 382,
-      "value": 0.675392670157068,
+      "k": 0,
+      "n": 415,
+      "value": 0.0,
       "ci": [
-        0.6259048353696391,
-        0.722136432926486
+        0.0,
+        0.008849476978505426
       ]
     },
-    "errors": 21
+    "errors": 0
   },
   "nested": {
     "outer_folds": 5,
     "fold_thresholds": [
       {
-        "positive": 0.87,
-        "negative": 0.13
+        "positive": null,
+        "negative": null
       },
       {
-        "positive": 0.85,
-        "negative": 0.09
+        "positive": null,
+        "negative": null
       },
       {
-        "positive": 0.93,
-        "negative": 0.23
+        "positive": null,
+        "negative": null
       },
       {
-        "positive": 0.88,
-        "negative": 0.2
+        "positive": null,
+        "negative": null
       },
       {
-        "positive": 0.87,
-        "negative": 0.18
+        "positive": null,
+        "negative": null
       }
     ],
     "metrics": {
       "n": 600,
-      "n_lp_positive": 218,
-      "n_lp_negative": 382,
-      "called_positive": 85,
-      "called_negative": 270,
-      "inconclusive": 245,
-      "true_positive": 83,
-      "false_positive": 2,
-      "true_negative": 253,
-      "false_negative": 17,
+      "n_lp_positive": 185,
+      "n_lp_negative": 415,
+      "called_positive": 0,
+      "called_negative": 0,
+      "inconclusive": 600,
+      "true_positive": 0,
+      "false_positive": 0,
+      "true_negative": 0,
+      "false_negative": 0,
       "ppv": {
-        "k": 83,
-        "n": 85,
-        "value": 0.9764705882352941,
+        "k": 0,
+        "n": 0,
+        "value": NaN,
         "ci": [
-          0.9175762555504242,
-          0.9971376680783514
+          NaN,
+          NaN
         ]
       },
       "npv": {
-        "k": 253,
-        "n": 270,
-        "value": 0.937037037037037,
+        "k": 0,
+        "n": 0,
+        "value": NaN,
         "ci": [
-          0.901102310704831,
-          0.9628973748730625
+          NaN,
+          NaN
         ]
       },
       "resolved": {
-        "k": 355,
+        "k": 0,
         "n": 600,
-        "value": 0.5916666666666667,
+        "value": 0.0,
         "ci": [
-          0.5511322288799936,
-          0.6312943548761254
+          0.0,
+          0.006129271330669258
         ]
       },
       "accuracy_resolved": {
-        "k": 336,
-        "n": 355,
-        "value": 0.9464788732394366,
+        "k": 0,
+        "n": 0,
+        "value": NaN,
         "ci": [
-          0.9176796733437685,
-          0.967472861199054
+          NaN,
+          NaN
         ]
       },
       "positives_ruled_in": {
-        "k": 83,
-        "n": 218,
-        "value": 0.38073394495412843,
+        "k": 0,
+        "n": 185,
+        "value": 0.0,
         "ci": [
-          0.3160044622918023,
-          0.4487546268124914
+          0.0,
+          0.01974240414218442
         ]
       },
       "negatives_ruled_out": {
-        "k": 253,
-        "n": 382,
-        "value": 0.662303664921466,
+        "k": 0,
+        "n": 415,
+        "value": 0.0,
         "ci": [
-          0.6124508698887594,
-          0.7096180363362212
+          0.0,
+          0.008849476978505426
         ]
       },
-      "errors": 19
+      "errors": 0
     }
   },
   "importance": [
     {
-      "feature": "clinical_stage",
-      "mean_auc_decrease": 0.09567903638589073,
-      "sd": 0.01736655232684718
-    },
-    {
       "feature": "ptau217",
-      "mean_auc_decrease": 0.0713063313675309,
-      "sd": 0.017253789039817266
-    },
-    {
-      "feature": "ab42_ab40_ratio",
-      "mean_auc_decrease": 0.05444503171247359,
-      "sd": 0.010965926077758224
-    },
-    {
-      "feature": "apoe4",
-      "mean_auc_decrease": 0.01963200813874008,
-      "sd": 0.007108396258944064
-    },
-    {
-      "feature": "anemia",
-      "mean_auc_decrease": 0.007567995040455253,
-      "sd": 0.0036304075215540456
+      "mean_auc_decrease": 0.1945294692282645,
+      "sd": 0.05551566768339159
     },
     {
       "feature": "egfr",
-      "mean_auc_decrease": 0.004404695671525527,
-      "sd": 0.008125727007953897
+      "mean_auc_decrease": 0.02567241940735922,
+      "sd": 0.008534594154369109
     },
     {
-      "feature": "hypertension",
-      "mean_auc_decrease": 0.0038209159261790764,
-      "sd": 0.0030729757326648393
-    },
-    {
-      "feature": "stroke",
-      "mean_auc_decrease": 0.003392877012828044,
-      "sd": 0.0018315749438163808
-    },
-    {
-      "feature": "ptau217_ab42_ratio",
-      "mean_auc_decrease": 0.0021136085456770854,
-      "sd": 0.0030042322976823856
+      "feature": "anemia",
+      "mean_auc_decrease": 0.006173884728101648,
+      "sd": 0.012303241794390884
     },
     {
       "feature": "triglycerides",
-      "mean_auc_decrease": 0.0015736619561589071,
-      "sd": 0.0021444419683734656
+      "mean_auc_decrease": 0.0035428199283621354,
+      "sd": 0.01112943541632155
+    },
+    {
+      "feature": "hypertension",
+      "mean_auc_decrease": 0.001563008791924493,
+      "sd": 0.015964670298225233
+    },
+    {
+      "feature": "apoe4",
+      "mean_auc_decrease": -0.00027352653858672086,
+      "sd": 0.011998941816353968
+    },
+    {
+      "feature": "clinical_stage",
+      "mean_auc_decrease": -0.002084011722565884,
+      "sd": 0.005388824006576318
+    },
+    {
+      "feature": "stroke",
+      "mean_auc_decrease": -0.0034646694887658174,
+      "sd": 0.003369040383701759
     }
   ],
   "decision_rule": {
@@ -304,5 +276,8 @@
     "4": 89,
     "5": 103
   },
-  "messages": []
+  "messages": [
+    "No threshold reached the safety target for POSITIVE (rule-in) calls with the current data: the model will never call a patient POSITIVE. More patients are needed.",
+    "No threshold reached the safety target for NEGATIVE (rule-out) calls with the current data: the model will never call a patient NEGATIVE. More patients are needed."
+  ]
 }

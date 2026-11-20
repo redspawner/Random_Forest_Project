@@ -3,12 +3,12 @@
 | File | Use |
 |---|---|
 | `example_1_training_file.xlsx` | **Training** (identical to the default dataset `data/default_training/synthetic_training_dataset.xlsx`): 600 grey-zone patients with all variables **and** `lp_result` (Positive/Negative). Drop it in the *Train model* tab, or run `python train.py examples/example_1_training_file.xlsx`. |
-| `example_2_new_patients_file.xlsx` | **Classifying a sample**: 43 new patients **without** `lp_result`. 40 are in the grey zone, plus 3 test rows: `NEW-LOW` (p-tau217 below the grey zone), `NEW-HIGH` (above it) and `NEW-TYPO` (MoCA = 34, an impossible value). Drop it in the *Classify new patients* tab. |
+| `example_2_new_patients_file.xlsx` | **Classifying a sample**: 43 new patients **without** `lp_result`. 40 are in the grey zone, plus 3 test rows: `NEW-LOW` (p-tau217 below the grey zone), `NEW-HIGH` (above it) and `NEW-TYPO` (haemoglobin = 45 g/dL, an impossible value). Drop it in the *Classify new patients* tab. |
 | `example_3_output_with_predictions.xlsx` | **Output**: file 2 returned by *Download my file with the predictions added*, with the columns `AI decision`, `AI model`, `AI score`, `AI explanation`, `AI missing variables`, `AI notes` and the sheet `AI prediction info`. |
 
 The true LP results of the new patients are in `data/synthetic/synthetic_new_patients_answer_key.xlsx`.
 
-## Test sample (current 15-column format)
+## Test sample (current 13-column format, no Aβ)
 
 | File | Use |
 |---|---|
@@ -26,6 +26,7 @@ Special cases and the expected decision:
 | TEST-MISSING | 80 % of variables blank | INCONCLUSIVE (insufficient data) |
 | TEST-COMMA | p-tau217 written as `0,2xx` | read correctly and classified |
 
-Expected result with the default model: 7 POSITIVE, 18 NEGATIVE, 28 INCONCLUSIVE, 2 NOT APPLICABLE,
-1 CHECK DATA. Two of the 25 definite answers are wrong compared with the LP (1 false positive,
-1 false negative), which is consistent with the 90 % PPV/NPV targets.
+Expected result with the default model (realistic version-2 data, no Aβ, strict 90 %/90 % rule):
+0 POSITIVE, 0 NEGATIVE, 53 INCONCLUSIVE, 2 NOT APPLICABLE, 1 CHECK DATA. With these variables and 600 training
+patients no threshold can be certified, so every grey-zone patient goes to LP (see docs/MODEL_COMPARISON.md). The
+safety checks still behave as listed above, and the scores and SHAP explanations show what the model learnt.
