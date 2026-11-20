@@ -76,3 +76,53 @@ def test_generator_v2_is_nonlinear_in_kidney_function():
     df = grey_zone_cohort(50, seed=1, version=2)
     assert df["ptau217"].between(0.14, 0.43).all() and set(df["lp_result"]) <= {"Positive", "Negative"}
     assert isinstance(df, pd.DataFrame)
+
+
+@pytest.mark.parametrize("method", ["smote", "random_oversample", "noise"])
+def test_resampling_is_training_only(cfg, train, method):
+    c = copy.deepcopy(cfg)
+    c["resampling"] = {"method": method, "ratio": 1.0, "k": 5}
+    b = train_model(train, c, nested=True, model_type_name="logistic_regression")
+    assert len(b["oof_scores"]) == 240 and b["report"]["nested"]["metrics"]["n"] == 240
+
+
+def test_smote_keeps_categories_and_missing():
+    from greyzone_rf.resampling import resample
+
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame({"ptau217": rng.random(80), "apoe4": rng.integers(0, 3, 80).astype(float),
+                      "egfr": rng.random(80) * 80})
+    X.loc[::4, "egfr"] = np.nan
+    y = (rng.random(80) > 0.75).astype(int)
+    Xr, yr = resample(X, y, {"resampling": {"method": "smote"}}, seed=1)
+    assert yr.mean() == pytest.approx(0.5, abs=0.02)
+    assert set(Xr["apoe4"].dropna().unique()) <= {0.0, 1.0, 2.0}               # no impossible 1.37 alleles
+    assert Xr["egfr"].isna().any()
+
+
+def test_generator_v3_extra_factors():
+    df = grey_zone_cohort(80, seed=3, version=3)
+    for col in ("tsh", "thyroid_disease", "sleep_apnea", "mta_score", "fazekas", "mmse"):
+        assert col in df.columns
+    assert pd.to_numeric(df["mmse"], errors="coerce").dropna().between(0, 30).all()
+    v2a, v2b = grey_zone_cohort(50, seed=4, version=2), grey_zone_cohort(50, seed=4, version=2)
+    assert v2a.equals(v2b)
+
+
+def test_xgboost_monotone_and_portable(cfg, train):
+    import io
+
+    import joblib
+
+    c = copy.deepcopy(cfg)
+    c["models"]["xgboost"]["monotone"] = {"ptau217": 1, "egfr": 1}
+    b = train_model(train, c, nested=False, model_type_name="xgboost")
+    X = train.table.reindex(columns=b["features"])
+    buffer = io.BytesIO()
+    joblib.dump(b["model"], buffer)
+    buffer.seek(0)
+    np.testing.assert_allclose(joblib.load(buffer).predict_proba(X), b["model"].predict_proba(X))
+    grid = X.iloc[[0] * 20].copy()
+    grid["ptau217"] = np.linspace(0.14, 0.43, 20)
+    p = b["model"].predict_proba(grid)[:, 1]
+    assert np.all(np.diff(p) >= -1e-9)                                        # never decreases with p-tau217

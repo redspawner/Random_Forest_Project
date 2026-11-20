@@ -125,8 +125,15 @@ def kidney_effect(egfr) -> np.ndarray:
             + KIDNEY_SLOPE2 * np.clip(KIDNEY_KNEE2 - egfr, 0, None))
 
 
-def simulate_memory_clinic_v2(n: int, seed: int = 0, real_base: pd.DataFrame | None = None) -> pd.DataFrame:
-    """``n`` consecutive memory-clinic patients (all p-tau217 values), version-2 biology."""
+def simulate_memory_clinic_v2(n: int, seed: int = 0, real_base: pd.DataFrame | None = None,
+                              extended: bool = False, effects: float = 1.0) -> pd.DataFrame:
+    """``n`` consecutive memory-clinic patients (all p-tau217 values), version-2 biology.
+
+    ``extended=True`` is **version 3**: the same patients plus the factors of :func:`_extended_factors`
+    (thyroid, MRI MTA / Fazekas, MMSE, BMI, sleep apnoea, triglyceride and hyperfiltration effects).
+    They come from a separate random stream, so version 2 stays reproducible. ``effects`` scales
+    the version-3 effect sizes (0.5 = weak-evidence scenario, 1.5 = strong-evidence scenario).
+    """
     from .synthetic import _creatinine_from_egfr
 
     rng = np.random.default_rng(seed + 2_000_003)
@@ -188,6 +195,10 @@ def simulate_memory_clinic_v2(n: int, seed: int = 0, real_base: pd.DataFrame | N
                - 0.022 * (bmi - 26.5)
                + HTN_PTAU * hypertension + VASC_PTAU * np.maximum(stroke, cvd)
                + rng.normal(0, PTAU_SD, n))
+    extra = _extended_factors(n, seed, age, female, egfr, bmi, tg, stage, amyloid, tau, stroke, cvd,
+                              hypertension, diabetes, effects) if extended else None
+    if extra is not None:
+        ln_ptau = ln_ptau + extra.pop("_ln_ptau_shift")
     ratio = np.clip(0.100 - 0.016 * _sigmoid((load - 15) / 8) + rng.normal(0, 0.008, n), 0.04, 0.16)
     ab40 = np.clip(rng.normal(300 + 1.5 * np.clip(70 - egfr, 0, None), 45, n), 120, 700)
 
@@ -220,6 +231,7 @@ def simulate_memory_clinic_v2(n: int, seed: int = 0, real_base: pd.DataFrame | N
         "mta_score": np.nan,
         "amyloid_load": np.round(load, 1),            # not given to the model (for analyses only)
         "lp_result": np.where(lp_positive == 1, "Positive", "Negative"),
+        **({} if extra is None else extra),
     })
 
 
@@ -259,3 +271,62 @@ def calibration_report_v2(n: int = 30000, seed: int = 0, lower: float = 0.14, up
     }
     return pd.DataFrame([{"quantity": k, "published": CALIBRATION_TARGETS_V2[k][0], "simulated": round(v, 3),
                           "source": CALIBRATION_TARGETS_V2[k][1]} for k, v in simulated.items()])
+
+
+# ---------------------------------------------------------------------------
+# Version 3: extra routine factors (effect sizes scaled by ``effects``)
+# ---------------------------------------------------------------------------
+V3_EFFECTS = {
+    # log-scale effects on plasma p-tau217, independent of amyloid
+    "thyroid": np.log(1.10),        # thyroid disease: higher p-tau217 (weak, inconsistent evidence; ASSUMED size)
+    "osa": np.log(1 / 1.13),        # obstructive sleep apnoea: lower p-tau217 (Shir 2026; ASSUMED size)
+    "tg": -0.08,                    # per log unit of triglycerides: modest inverse association (ASSUMED size)
+    "hyperfiltration": -0.006,      # per mL/min above eGFR 90: faster clearance, lower p-tau217 (ASSUMED)
+}
+
+
+def _extended_factors(n, seed, age, female, egfr, bmi, tg, stage, amyloid, tau, stroke, cvd, hypertension,
+                      diabetes, effects: float = 1.0) -> dict:
+    """Routine memory-clinic factors for version 3, plus their effect on log p-tau217.
+
+    * Thyroid (dementia blood screen): TSH log-normal (median about 1.9 mIU/L). Known thyroid disease
+      (hypothyroidism treated or not, or hyperthyroidism) in about 12 % (women and older people more).
+    * Sleep apnoea: more with higher BMI and in men (about 10-15 %), lowers p-tau217.
+    * MRI (often unavailable): MTA score 0-4 (Scheltens; rises with age, clinical stage and tau in
+      amyloid-positive patients: Wahlund 2017, Persson 2017). Fazekas 0-3 (age, hypertension,
+      diabetes, stroke).
+    * MMSE (routine): by clinical stage, about 1 point lower in amyloid-positive patients with tau, and
+      lower with age.
+    """
+    rng = np.random.default_rng(seed + 3_000_017)
+    e = float(effects)
+    tsh = np.exp(rng.normal(np.log(1.9) + 0.004 * (age - 72), 0.45, n))
+    thyroid = ((rng.random(n) < _sigmoid(-2.4 + 0.8 * female + 0.02 * (age - 72))) | (tsh > 6) | (tsh < 0.3))
+    thyroid = thyroid.astype(int)
+    osa = (rng.random(n) < _sigmoid(-2.4 + 0.12 * (bmi - 26.5) + 0.6 * (1 - female))).astype(int)
+    tau_pos = np.clip(tau, 0, None) * amyloid
+    mta = np.clip(np.round(0.3 + 0.045 * (age - 65) + 0.45 * stage + 0.55 * e * tau_pos
+                           + rng.normal(0, 0.6, n)), 0, 4)
+    fazekas = np.clip(np.round(0.6 + 0.035 * (age - 72) + 0.5 * hypertension + 0.3 * diabetes + 0.6 * stroke
+                               + 0.2 * cvd + 0.01 * np.clip(70 - egfr, 0, None) + rng.normal(0, 0.7, n)), 0, 3)
+    mmse = np.clip(np.round(np.select([stage == 0, stage == 1], [28.6, 26.2], 21.0) - 0.04 * (age - 72)
+                            - 1.0 * e * tau_pos + rng.normal(0, 1.7, n)), 0, 30)
+    mri_available = rng.random(n) < 0.55                      # MRI rating present in about half of patients
+    shift = (e * V3_EFFECTS["thyroid"] * thyroid + e * V3_EFFECTS["osa"] * osa
+             + e * V3_EFFECTS["tg"] * np.log(tg / 125)
+             + e * V3_EFFECTS["hyperfiltration"] * np.clip(egfr - 90, 0, None))
+    return {
+        "tsh": np.round(tsh, 2),
+        "thyroid_disease": thyroid,
+        "sleep_apnea": osa,
+        "mta_score": np.where(mri_available, mta, np.nan),
+        "fazekas": np.where(mri_available, fazekas, np.nan),
+        "mmse": mmse,
+        "_ln_ptau_shift": shift,
+    }
+
+
+def simulate_memory_clinic_v3(n: int, seed: int = 0, real_base: pd.DataFrame | None = None,
+                              effects: float = 1.0) -> pd.DataFrame:
+    """Version 3 = version 2 plus thyroid, MRI, MMSE, sleep apnoea and metabolic factors."""
+    return simulate_memory_clinic_v2(n, seed, real_base, extended=True, effects=effects)

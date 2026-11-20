@@ -199,18 +199,30 @@ def _add_missingness(df: pd.DataFrame, rng) -> pd.DataFrame:
 
 
 def simulator(version: int = 1):
-    """The population simulator: 1 = original (mostly additive), 2 = non-linear (synthetic_v2.py)."""
+    """The population simulator: 1 = original (mostly additive), 2 = non-linear, 3 = 2 + extra factors."""
     if version == 2:
         from .synthetic_v2 import simulate_memory_clinic_v2
 
         return simulate_memory_clinic_v2
+    if version == 3:
+        from .synthetic_v2 import simulate_memory_clinic_v3
+
+        return simulate_memory_clinic_v3
     return simulate_memory_clinic
 
 
 def grey_zone_cohort(n_patients: int, lower: float = 0.14, upper: float = 0.43,
-                     seed: int = 0, prefix: str = "SYN", real: bool = False, version: int = 1) -> pd.DataFrame:
-    """Return ``n_patients`` synthetic patients whose p-tau217 is in the grey zone."""
+                     seed: int = 0, prefix: str = "SYN", real: bool = False, version: int = 1,
+                     effects: float = 1.0) -> pd.DataFrame:
+    """Return ``n_patients`` synthetic patients whose p-tau217 is in the grey zone.
+
+    ``effects`` (version 3 only) scales the effect sizes of the extra factors (sensitivity scenarios).
+    """
     simulate = simulator(version)
+    if version == 3 and effects != 1.0:
+        from functools import partial
+
+        simulate = partial(simulate, effects=effects)
     rng = np.random.default_rng(seed + 1)
     chunks, total = [], 0
     batch = 0
@@ -224,6 +236,10 @@ def grey_zone_cohort(n_patients: int, lower: float = 0.14, upper: float = 0.43,
         batch += 1
     df = pd.concat(chunks).iloc[:n_patients].reset_index(drop=True)
     df = _add_missingness(df, rng)
+    if version == 3:                     # extra factors of version 3: their own missingness (separate stream)
+        rng3 = np.random.default_rng(seed + 4_000_037)
+        for column, rate in {"tsh": 0.12, "thyroid_disease": 0.03, "mmse": 0.05}.items():
+            df.loc[rng3.random(len(df)) < rate, column] = None
     df.insert(0, "patient_id", [f"{prefix}-{i + 1:04d}" for i in range(len(df))])
     return df
 

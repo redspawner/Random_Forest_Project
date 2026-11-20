@@ -1,0 +1,27 @@
+# Synthetic training sets (artificial patients - not real data)
+
+Made by `python make_training_sets.py`. Every file has the template columns (the optional factors are
+filled for version 3) and `lp_result`. Use them in the app (Train model) or with
+`python train.py <file> --model all --out models/<name>`.
+
+| File | Grey-zone patients | Assumptions | LP-positive |
+|---|---|---|---|
+| `v3_central_n150.xlsx` | 150 | version 3, central literature effect sizes | 31% |
+| `v3_central_n300.xlsx` | 300 | version 3, central literature effect sizes | 26% |
+| `v3_central_n600.xlsx` | 600 | version 3, central literature effect sizes | 33% |
+| `v3_central_n1200.xlsx` | 1200 | version 3, central literature effect sizes | 28% |
+| `v3_central_n2500.xlsx` | 2500 | version 3, central literature effect sizes | 30% |
+| `v3_central_n5000.xlsx` | 5000 | version 3, central literature effect sizes | 30% |
+| `v3_weak_effects_n600.xlsx` | 600 | version 3, extra-factor effects halved (weak-evidence scenario) | 30% |
+| `v3_strong_effects_n600.xlsx` | 600 | version 3, extra-factor effects x1.5 (strong-evidence scenario) | 29% |
+| `v2_nonlinear_n600.xlsx` | 600 | version 2 (default dataset generator, without the extra factors) | 29% |
+| `v1_additive_n600.xlsx` | 600 | version 1, additive log-linear biology (earlier, optimistic) | 32% |
+
+- **Version 3** = the default version-2 biology plus thyroid status, MRI ratings (MTA, Fazekas; missing
+  in about half), MMSE, BMI, sleep apnoea and the triglyceride and hyperfiltration effects.
+  See `greyzone_rf/synthetic_v2.py` and docs/EXTRA_FACTORS.md for the sources and the assumed sizes.
+- **Sizes 150-5000** show how the certified LP savings grow with the number of patients.
+- **Weak / strong scenarios** show how much the conclusions depend on effect sizes that the
+  literature does not pin down.
+- **Version 1** is the earlier, optimistic generator (mostly additive effects): use it to show how
+  much an over-simple simulation flatters the models.

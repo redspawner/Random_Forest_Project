@@ -178,7 +178,11 @@ class PortableXGB(BaseEstimator):
     def fit(self, X, y, sample_weight=None):
         from xgboost import XGBClassifier
 
-        self.model_ = XGBClassifier(**self.params).fit(X, y, sample_weight=sample_weight)
+        params = dict(self.params)
+        monotone = params.pop("monotone", None) or {}
+        if monotone:                                  # only the variables present in this model
+            params["monotone_constraints"] = {c: int(monotone[c]) for c in X.columns if c in monotone}
+        self.model_ = XGBClassifier(**params).fit(X, y, sample_weight=sample_weight)
         self.classes_ = self.model_.classes_
         self.n_features_in_ = self.model_.n_features_in_
         return self
@@ -210,7 +214,8 @@ class PortableXGB(BaseEstimator):
         if raw is not None:
             from xgboost import XGBClassifier
 
-            model = XGBClassifier(**self.params)
+            params = {k: v for k, v in self.params.items() if k != "monotone"}
+            model = XGBClassifier(**params)
             model.load_model(bytearray(raw))           # also restores the feature names
             self.model_ = model
 
@@ -258,7 +263,7 @@ def build_estimator(cfg: dict, seed: int, n_jobs: int | None = None, kind: str |
             subsample=float(p["subsample"]), colsample_bytree=float(p["colsample_bytree"]),
             reg_lambda=float(p["reg_lambda"]), reg_alpha=float(p.get("reg_alpha", 0.0)),
             tree_method="hist", n_jobs=1 if n_jobs in (None, 1) else n_jobs, random_state=seed,
-            eval_metric="logloss", verbosity=0)
+            eval_metric="logloss", verbosity=0, monotone=p.get("monotone"))
     if kind == "spline_logistic":
         return make_pipeline(SplineFeatures(int(p["n_knots"]), int(p["degree"])),
                              LogisticRegression(C=float(p["C"]), max_iter=5000))

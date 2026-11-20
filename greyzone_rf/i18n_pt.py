@@ -26,9 +26,23 @@ COLUMN_NAMES = {
     "stroke": "AVC",
     "clinical_stage": "estádio_clínico",
     "atypical_features": "sinais_atípicos",
+    "bmi": "IMC",
+    "sleep_apnea": "apneia_sono",
+    "tsh": "TSH",
+    "thyroid_disease": "doença_tiroideia",
+    "mta_score": "MTA",
+    "fazekas": "Fazekas",
+    "mmse": "MMSE",
 }
 
 COLUMN_DESCRIPTIONS = {
+    "bmi": "Índice de massa corporal (peso / altura^2) - IMC baixo aumenta a p-tau217 plasmática",
+    "sleep_apnea": "Apneia obstrutiva do sono conhecida (diagnóstico ou CPAP), sim/não - associada a p-tau217 mais baixa",
+    "tsh": "Hormona estimulante da tiroide (rastreio analítico de rotina na demência)",
+    "thyroid_disease": "Doença da tiroide conhecida (hipo ou hipertiroidismo, ou sob levotiroxina / antitiroideus), sim/não",
+    "mta_score": "Atrofia temporal mesial na RM (escala MTA de Scheltens, média esquerda/direita, 0-4) - em branco se não houver",
+    "fazekas": "Hiperintensidades da substância branca na RM (Fazekas 0-3) - em branco se não houver",
+    "mmse": "Mini-Mental State Examination (0-30) na consulta da colheita",
     "age": "Idade na colheita do plasma",
     "sex": "Sexo biológico (M = masculino, F = feminino)",
     "egfr": "Taxa de filtração glomerular estimada (em branco -> calculada a partir da creatinina com CKD-EPI 2021)",
@@ -56,6 +70,7 @@ UNITS = {
     "ratio": "rácio",
     "SCD/MCI/Dementia": "DCS/DCL/Demência",
     "text": "texto",
+    "points": "pontos",
 }
 
 PT = {

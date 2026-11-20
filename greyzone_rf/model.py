@@ -37,6 +37,7 @@ from .config import config_snapshot, model_feature_names
 from .data import PreparedData, in_grey_zone
 from .estimators import DEFAULT_TYPE, build_estimator, model_label, model_type
 from .explain import background_sample
+from .resampling import resample
 from .i18n import column_name
 from .i18n import tr as translate
 from .stats import (INCONCLUSIVE, apply_thresholds, bootstrap_auc_ci, minimum_calls_needed,
@@ -94,9 +95,15 @@ def _with_augmentation(X_train: pd.DataFrame, y_train: np.ndarray, aug) -> tuple
     return (pd.concat([X_train, X_aug[X_train.columns]], ignore_index=True), np.r_[y_train, y_aug])
 
 
+def _training_set(X_train, y_train, aug, cfg, seed):
+    """Training data of one fit: real patients (+ augmentation) (+ resampling). Never used for testing."""
+    X_t, y_t = _with_augmentation(X_train, y_train, aug)
+    return resample(X_t, y_t, cfg, seed)
+
+
 def _fit_fold(X, y, train, test, cfg, seed, importance, aug=None):
     """One cross-validation fit (runs in a worker process)."""
-    forest = build_forest(cfg, seed, n_jobs=1).fit(*_with_augmentation(X.iloc[train], y[train], aug))
+    forest = build_forest(cfg, seed, n_jobs=1).fit(*_training_set(X.iloc[train], y[train], aug, cfg, seed))
     scores = forest.predict_proba(X.iloc[test])[:, 1]
     imp = None
     if importance:
@@ -140,7 +147,7 @@ def fit_procedure(X, y, cfg, n_repeats, seed, importance=False, counter=None, pa
                   min_calls=int(dec["min_calls_per_side"]))
     sel_pos = select_threshold(oof["scores"], y, "positive", float(dec["target_ppv"]), **kwargs)
     sel_neg = select_threshold(oof["scores"], y, "negative", float(dec["target_npv"]), **kwargs)
-    forest = build_forest(cfg, seed, n_jobs=None if parallel else 1).fit(*_with_augmentation(X, y, aug))
+    forest = build_forest(cfg, seed, n_jobs=None if parallel else 1).fit(*_training_set(X, y, aug, cfg, seed))
     if counter:
         counter.step(translate("Fitting the final model"))
     thresholds = {

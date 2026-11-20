@@ -100,6 +100,13 @@ augmentation:
   file: data/default_training/synthetic_training_dataset.xlsx
   ratio: 1.0
 
+# Training-set resampling (SMOTE etc.): tested in docs/EXTRA_FACTORS.md - it did NOT help here, so it is off.
+# Like augmentation it only changes the training part of each fit; validation and thresholds use real patients.
+resampling:
+  method: none              # none | smote | random_oversample | noise
+  ratio: 1.0                # 1.0 = oversample the LP-positive patients up to balance
+  k: 5                      # SMOTE neighbours
+
 # -----------------------------------------------------------------------------
 #  Models (switch at the top right of the app; comparison in the "Compare models" tab)
 # -----------------------------------------------------------------------------
@@ -324,6 +331,69 @@ features:
     unit: SCD/MCI/Dementia
     example: MCI
     aliases: [stage, estadio, estadio_clinico, syndrome, diagnostic_stage]
+
+  # --- Optional routine factors (version-3 analysis, docs/EXTRA_FACTORS.md) ---------------------------------
+  # Blank columns are simply missing. use_as_feature says whether the models use them.
+  - name: bmi
+    use_as_feature: false
+    description: Body mass index (weight / height^2) - lower BMI raises plasma p-tau217
+    unit: kg/m2
+    min: 12
+    max: 70
+    example: 26.4
+    aliases: [imc, body_mass_index]
+
+  - name: sleep_apnea
+    use_as_feature: false
+    type: binary
+    description: Known obstructive sleep apnoea (diagnosis or CPAP), yes/no - associated with lower p-tau217
+    unit: 0/1
+    example: 0
+    aliases: [osa, saos, apneia_sono, sleep_apnoea]
+
+  - name: tsh
+    use_as_feature: false
+    description: Thyroid-stimulating hormone (routine dementia blood screen)
+    unit: mIU/L
+    min: 0.005
+    max: 150
+    example: 1.9
+    aliases: [tsh_level, tirotropina]
+
+  - name: thyroid_disease
+    use_as_feature: false
+    type: binary
+    description: Known thyroid disease (hypo- or hyperthyroidism, or on levothyroxine / antithyroid drugs), yes/no
+    unit: 0/1
+    example: 0
+    aliases: [thyroid, doenca_tiroideia, hypothyroidism]
+
+  - name: mta_score
+    use_as_feature: false
+    description: MRI medial temporal atrophy (Scheltens MTA, mean of left and right, 0-4) - blank if no MRI rating
+    unit: 0-4
+    min: 0
+    max: 4
+    example: 1.5
+    aliases: [mta, scheltens, mri_mta]
+
+  - name: fazekas
+    use_as_feature: false
+    description: MRI white-matter hyperintensities (Fazekas 0-3) - blank if no MRI rating
+    unit: 0-3
+    min: 0
+    max: 3
+    example: 1
+    aliases: [fazekas_score, wmh]
+
+  - name: mmse
+    use_as_feature: false
+    description: Mini-Mental State Examination (0-30) at the visit of the blood test
+    unit: points
+    min: 0
+    max: 30
+    example: 26
+    aliases: [mms, mini_mental]
 
   - name: atypical_features
     type: binary
