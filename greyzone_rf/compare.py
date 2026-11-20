@@ -23,8 +23,8 @@ from sklearn.metrics import brier_score_loss, roc_auc_score  # noqa: E402
 from .estimators import model_label  # noqa: E402
 from .i18n import tr  # noqa: E402
 from .predict import predict_prepared  # noqa: E402
-from .report import GRID, INK, INK_2, SURFACE, _fig  # noqa: E402
-from .stats import NEGATIVE, POSITIVE, triage_metrics  # noqa: E402
+from .report import GRID, INK, INK_2, _fig  # noqa: E402
+from .stats import NEGATIVE, POSITIVE  # noqa: E402
 
 # One colour per model (validated categorical palette, same family as the report figures)
 COLORS = ["#2a78d6", "#eb6834", "#1f9e6e", "#8a5cc7", "#c0841b", "#d0457a", "#4a4a48"]

@@ -1,7 +1,6 @@
 """Every model type uses the same procedure and the same safeguards as the Random Forest."""
 
 import copy
-import io
 
 import numpy as np
 import pandas as pd
