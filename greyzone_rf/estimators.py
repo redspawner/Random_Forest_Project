@@ -156,6 +156,65 @@ class SplineFeatures(BaseEstimator, TransformerMixin):
         return self.scaler_.transform(self._design(values))
 
 
+class PortableXGB(BaseEstimator):
+    """XGBoost classifier whose saved form is XGBoost's own JSON model (portable across operating systems).
+
+    Pickling an XGBClassifier stores its internal binary buffer, which failed to load on Windows
+    ("input stream corrupted"). This wrapper pickles the booster as JSON text instead.
+    """
+
+    _estimator_type = "classifier"
+
+    def __init__(self, **params):
+        self.params = params
+
+    def get_params(self, deep=True):
+        return dict(self.params)
+
+    def set_params(self, **params):
+        self.params.update(params)
+        return self
+
+    def fit(self, X, y, sample_weight=None):
+        from xgboost import XGBClassifier
+
+        self.model_ = XGBClassifier(**self.params).fit(X, y, sample_weight=sample_weight)
+        self.classes_ = self.model_.classes_
+        self.n_features_in_ = self.model_.n_features_in_
+        return self
+
+    def predict_proba(self, X):
+        return self.model_.predict_proba(X)
+
+    def predict(self, X):
+        return self.model_.predict(X)
+
+    def __sklearn_tags__(self):
+        from sklearn.utils import ClassifierTags, Tags, TargetTags
+
+        tags = Tags(estimator_type="classifier", target_tags=TargetTags(required=True),
+                    classifier_tags=ClassifierTags())
+        tags.input_tags.allow_nan = True
+        return tags
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        if "model_" in state:
+            state["model_json_"] = bytes(self.model_.get_booster().save_raw("json"))
+            del state["model_"]
+        return state
+
+    def __setstate__(self, state):
+        raw = state.pop("model_json_", None)
+        self.__dict__.update(state)
+        if raw is not None:
+            from xgboost import XGBClassifier
+
+            model = XGBClassifier(**self.params)
+            model.load_model(bytearray(raw))           # also restores the feature names
+            self.model_ = model
+
+
 def _imputed_pipeline(final, log_transform: bool):
     steps = [LogSkewed()] if log_transform else []
     steps += [SimpleImputer(strategy="median", add_indicator=True), StandardScaler(), final]
@@ -193,9 +252,7 @@ def build_estimator(cfg: dict, seed: int, n_jobs: int | None = None, kind: str |
                                             cv=StratifiedKFold(5, shuffle=True, random_state=seed))
         return _imputed_pipeline(calibrated, bool(p.get("log_transform", True)))
     if kind == "xgboost":
-        from xgboost import XGBClassifier
-
-        return XGBClassifier(
+        return PortableXGB(
             n_estimators=int(p["n_estimators"]), learning_rate=float(p["learning_rate"]),
             max_depth=int(p["max_depth"]), min_child_weight=float(p["min_child_weight"]),
             subsample=float(p["subsample"]), colsample_bytree=float(p["colsample_bytree"]),

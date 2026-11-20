@@ -1,6 +1,6 @@
 # Training report - grey-zone XGBoost
 
-*Trained 2026-11-20T11:25:25* - source: `synthetic_training_dataset.xlsx`
+*Trained 2026-11-20T11:39:19* - source: `synthetic_training_dataset.xlsx`
 
 ## Cohort
 - Rows in file: 600; excluded: 0 without LP result, 0 without p-tau217, 0 outside the grey zone [0.14-0.43 pg/mL].
