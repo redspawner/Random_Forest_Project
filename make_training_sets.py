@@ -19,12 +19,16 @@ from greyzone_rf.synthetic import grey_zone_cohort
 
 OUT = PROJECT_ROOT / "data" / "synthetic" / "training_sets"
 SIZES = [150, 300, 600, 1200, 2500, 5000]
-SCENARIOS = [   # (file stem, version, effects, size, description)
+SCENARIOS = [   # (file stem, version, effects, size, description[, separation])
     *[(f"v3_central_n{n}", 3, 1.0, n, "version 3, central literature effect sizes") for n in SIZES],
     ("v3_weak_effects_n600", 3, 0.5, 600, "version 3, extra-factor effects halved (weak-evidence scenario)"),
     ("v3_strong_effects_n600", 3, 1.5, 600, "version 3, extra-factor effects x1.5 (strong-evidence scenario)"),
     ("v2_nonlinear_n600", 2, 1.0, 600, "version 2 (default dataset generator, without the extra factors)"),
     ("v1_additive_n600", 1, 1.0, 600, "version 1, additive log-linear biology (earlier, optimistic)"),
+    # OPTIMISTIC, more separated data (less measurement noise, stronger tau / extra-factor effects): for demos
+    # and for testing what the pipeline does when the grey zone is resolvable. Not realistic.
+    *[(f"v3_separation{sep}_n{n}", 3, 1.0, n, f"version 3, OPTIMISTIC separation x{sep} ({label})", sep)
+      for sep, label in [(1.25, "moderate"), (1.5, "high"), (2.0, "very high")] for n in (600, 1000, 1500, 2000)],
 ]
 
 
@@ -34,9 +38,10 @@ def main() -> None:
     wanted = ["patient_id", *[s.name for s in feature_specs(cfg) if s.in_template], "lp_result"]
     OUT.mkdir(parents=True, exist_ok=True)
     rows = []
-    for k, (stem, version, effects, n, text) in enumerate(SCENARIOS):
+    for k, (stem, version, effects, n, text, *rest) in enumerate(SCENARIOS):
+        sep = rest[0] if rest else 1.0
         df = grey_zone_cohort(n, gz["ptau217_lower"], gz["ptau217_upper"], seed=9000 + k, prefix="LIB",
-                              real=True, version=version, effects=effects)
+                              real=True, version=version, effects=effects, separation=sep)
         df = df[[c for c in wanted if c in df.columns]]
         path = OUT / f"{stem}.xlsx"
         with pd.ExcelWriter(path, engine="openpyxl") as writer:
@@ -65,6 +70,15 @@ def main() -> None:
         "  literature does not pin down.",
         "- **Version 1** is the earlier, optimistic generator (mostly additive effects): use it to show how",
         "  much an over-simple simulation flatters the models.",
+        "- **`v3_separation*`** files are deliberately OPTIMISTIC: p-tau217 and CSF measurement noise divided by",
+        "  the separation factor, and tau / MRI / MMSE effects multiplied by it. LP-positive and LP-negative patients",
+        "  are further apart, so the 90 % / 95 % rule can certify thresholds (Logistic Regression, tested on new",
+        "  patients from the same scenario):",
+        "  - x1.25: about 7 % of LPs avoided with 600 patients, about 68 % with 2000;",
+        "  - x1.5: about 73 % with 600, 83 % with 2000;",
+        "  - x2.0: about 88-91 %;",
+        "  - true PPV and NPV about 92-97 %.",
+        "  Use them for demonstrations and teaching, never as evidence about real patients.",
         "",
     ]), encoding="utf-8")
 

@@ -126,7 +126,7 @@ def kidney_effect(egfr) -> np.ndarray:
 
 
 def simulate_memory_clinic_v2(n: int, seed: int = 0, real_base: pd.DataFrame | None = None,
-                              extended: bool = False, effects: float = 1.0) -> pd.DataFrame:
+                              extended: bool = False, effects: float = 1.0, separation: float = 1.0) -> pd.DataFrame:
     """``n`` consecutive memory-clinic patients (all p-tau217 values), version-2 biology.
 
     ``extended=True`` is **version 3**: the same patients plus the factors of :func:`_extended_factors`
@@ -153,7 +153,8 @@ def simulate_memory_clinic_v2(n: int, seed: int = 0, real_base: pd.DataFrame | N
     amyloid = (rng.random(n) < amyloid_probability(age, apoe4, stage)).astype(int)
     # continuous amyloid load (centiloid-like): negatives around 0, positives broad and stage-dependent
     load = np.where(amyloid == 1, 18 + rng.gamma(2.0, 22 + 10 * stage, n), rng.normal(0, 8, n))
-    lp_positive = (load + rng.normal(0, 9, n) > 18).astype(int)      # CSF result: noisy threshold
+    sep = float(separation)              # > 1: OPTIMISTIC demo data (less noise, stronger tau / extra effects)
+    lp_positive = (load + rng.normal(0, 9, n) / sep > 18).astype(int)      # CSF result: noisy threshold
     tau = np.where(amyloid == 1, rng.normal(0.4 * stage, 0.5, n), rng.normal(0, 0.25, n))
 
     if base is None:
@@ -188,15 +189,15 @@ def simulate_memory_clinic_v2(n: int, seed: int = 0, real_base: pd.DataFrame | N
     ln_ptau = (PTAU_BASE
                + PTAU_AMY_MAX * _sigmoid((load - PTAU_AMY_MID) / PTAU_AMY_WIDTH)
                + 0.003 * np.clip(load - 60, 0, None)
-               + PTAU_TAU * tau
+               + PTAU_TAU * sep * tau
                + 0.007 * (age - 72)
                + kidney_effect(egfr)
                + ANEMIA_PTAU * anemia
                - 0.022 * (bmi - 26.5)
                + HTN_PTAU * hypertension + VASC_PTAU * np.maximum(stroke, cvd)
-               + rng.normal(0, PTAU_SD, n))
+               + rng.normal(0, PTAU_SD, n) / sep)
     extra = _extended_factors(n, seed, age, female, egfr, bmi, tg, stage, amyloid, tau, stroke, cvd,
-                              hypertension, diabetes, effects) if extended else None
+                              hypertension, diabetes, effects * sep) if extended else None
     if extra is not None:
         ln_ptau = ln_ptau + extra.pop("_ln_ptau_shift")
     ratio = np.clip(0.100 - 0.016 * _sigmoid((load - 15) / 8) + rng.normal(0, 0.008, n), 0.04, 0.16)
@@ -327,7 +328,7 @@ def _extended_factors(n, seed, age, female, egfr, bmi, tg, stage, amyloid, tau, 
     }
 
 
-def simulate_memory_clinic_v3(n: int, seed: int = 0, real_base: pd.DataFrame | None = None,
+def simulate_memory_clinic_v3(n: int, seed: int = 0, real_base: pd.DataFrame | None = None, separation: float = 1.0,
                               effects: float = 1.0) -> pd.DataFrame:
     """Version 3 = version 2 plus thyroid, MRI, MMSE, sleep apnoea and metabolic factors."""
-    return simulate_memory_clinic_v2(n, seed, real_base, extended=True, effects=effects)
+    return simulate_memory_clinic_v2(n, seed, real_base, extended=True, effects=effects, separation=separation)

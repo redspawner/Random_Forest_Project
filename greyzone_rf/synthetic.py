@@ -213,16 +213,18 @@ def simulator(version: int = 1):
 
 def grey_zone_cohort(n_patients: int, lower: float = 0.14, upper: float = 0.43,
                      seed: int = 0, prefix: str = "SYN", real: bool = False, version: int = 1,
-                     effects: float = 1.0) -> pd.DataFrame:
+                     effects: float = 1.0, separation: float = 1.0) -> pd.DataFrame:
     """Return ``n_patients`` synthetic patients whose p-tau217 is in the grey zone.
 
     ``effects`` (version 3 only) scales the effect sizes of the extra factors (sensitivity scenarios).
     """
     simulate = simulator(version)
-    if version == 3 and effects != 1.0:
-        from functools import partial
+    from functools import partial
 
+    if version == 3 and effects != 1.0:
         simulate = partial(simulate, effects=effects)
+    if version in (2, 3) and separation != 1.0:      # OPTIMISTIC demo data: LP+ and LP- better separated
+        simulate = partial(simulate, separation=separation)
     rng = np.random.default_rng(seed + 1)
     chunks, total = [], 0
     batch = 0
