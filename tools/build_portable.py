@@ -158,9 +158,9 @@ def set_language(app: Path, lang: str) -> None:
     config.write_text(text.replace("\nlanguage: en\n", f"\nlanguage: {lang}\n"), encoding="utf-8")
     # The figures and text report of the shipped model are regenerated in the new language the
     # first time the "Model report" tab is opened.
-    model = app / "models" / "default"
-    for item in [*model.glob("*.png"), model / "report.md"]:
-        item.unlink(missing_ok=True)
+    for model in (app / "models").glob("default*"):          # the shipped model of every type
+        for item in [*model.glob("*.png"), model / "report.md"]:
+            item.unlink(missing_ok=True)
     print(f"  interface language: {lang}")
 
 
