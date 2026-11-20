@@ -40,7 +40,8 @@ jobs:
 
       - name: Test - every shipped model (RF, LR, GB, ...) loads without re-training
         working-directory: dist/${{ matrix.folder }}/app
-        run: ..\python\python.exe -c "from greyzone_rf.default_model import default_status as s, shipped_types as t; from greyzone_rf.config import load_config as c; rs={k: s(c(), k) for k in t(c())}; [print(k, r['loadable'], r['dataset_matches'], r['error']) for k, r in rs.items()]; assert all(r['loadable'] and r['dataset_matches'] for r in rs.values())"
+        run: |
+          ..\python\python.exe -c "from greyzone_rf.default_model import default_status as s, shipped_types as t; from greyzone_rf.config import load_config as c; rs={k: s(c(), k) for k in t(c())}; [print(k, r['loadable'], r['dataset_matches'], r['error']) for k, r in rs.items()]; assert all(r['loadable'] and r['dataset_matches'] for r in rs.values())"
 
       - name: Test - classify the example patients with the Logistic Regression and the Gradient Boosting
         working-directory: dist/${{ matrix.folder }}/app
