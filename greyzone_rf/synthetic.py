@@ -186,13 +186,18 @@ MISSING_RATES = {
 }
 
 
+# Multiplies every missing-data rate (1 = realistic default, 0.5 = half as much missing, 0 = complete data).
+# The random draws are the same at every value, so the default datasets do not change.
+MISSING_SCALE = 1.0
+
+
 def _add_missingness(df: pd.DataFrame, rng) -> pd.DataFrame:
     df = df.astype(object)
     for column, rate in MISSING_RATES.items():
-        df.loc[rng.random(len(df)) < rate, column] = None
-    amyloid_missing = rng.random(len(df)) < 0.03          # Abeta42/40 part of the work-up; rare assay failure
+        df.loc[rng.random(len(df)) < rate * MISSING_SCALE, column] = None
+    amyloid_missing = rng.random(len(df)) < 0.03 * MISSING_SCALE          # Abeta42/40 part of the work-up; rare assay failure
     df.loc[amyloid_missing, ["ab42", "ab40"]] = None
-    egfr_missing = rng.random(len(df)) < 0.06             # only creatinine available
+    egfr_missing = rng.random(len(df)) < 0.06 * MISSING_SCALE            # only creatinine available
     df.loc[egfr_missing, "egfr"] = None
     df.loc[~egfr_missing & (rng.random(len(df)) < 0.5), "creatinine"] = None
     return df
@@ -241,7 +246,7 @@ def grey_zone_cohort(n_patients: int, lower: float = 0.14, upper: float = 0.43,
     if version == 3:                     # extra factors of version 3: their own missingness (separate stream)
         rng3 = np.random.default_rng(seed + 4_000_037)
         for column, rate in {"tsh": 0.12, "thyroid_disease": 0.03, "mmse": 0.05}.items():
-            df.loc[rng3.random(len(df)) < rate, column] = None
+            df.loc[rng3.random(len(df)) < rate * MISSING_SCALE, column] = None
     df.insert(0, "patient_id", [f"{prefix}-{i + 1:04d}" for i in range(len(df))])
     return df
 

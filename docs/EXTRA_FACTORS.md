@@ -126,3 +126,25 @@ python tools/benchmark_models.py --external 6000
 The variable and resampling experiments are reproduced by training on
 `data/synthetic/training_sets/v3_central_n600.xlsx` with the `use_as_feature` / `resampling` settings of
 `config.yaml` changed.
+
+## Less missing data?
+
+Settings: `greyzone_rf.synthetic.MISSING_SCALE` (1 = realistic, 0 = complete) and
+`greyzone_rf.synthetic_v2.MRI_AVAILABILITY` (0.55 = realistic).
+
+**Simulation** (version 3, 1,500 training patients, LR, 6,000 new patients):
+- AUC 0.811 with realistic missingness (11 % of values blank);
+- 0.811 with MRI for everyone;
+- 0.812 with half the missingness;
+- 0.814 with complete data;
+- the certified LP savings stay at 0–5 %.
+
+The variables that are often missing carry little extra information in this simulation.
+
+**User-supplied 2,000-patient file** (LR trained on the separate 1,500 file):
+- MTA present: AUC 0.889 (n = 1,218); MTA missing: 0.843 (n = 782);
+- 0–1 model variables missing: 0.887; 2 or more missing: 0.846;
+- LPs avoided are similar in all groups (31–33 %), because the certified thresholds do not change.
+
+Conclusion: collect the informative variables consistently, above all the MRI MTA rating and APOE. Blanks lower
+accuracy rather than safety: patients with more than 50 % missing stay INCONCLUSIVE automatically.

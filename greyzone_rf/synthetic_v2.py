@@ -278,6 +278,8 @@ def calibration_report_v2(n: int = 30000, seed: int = 0, lower: float = 0.14, up
 # ---------------------------------------------------------------------------
 # Version 3: extra routine factors (effect sizes scaled by ``effects``)
 # ---------------------------------------------------------------------------
+MRI_AVAILABILITY = 0.55        # share of patients with an MRI rating (version 3); 1.0 = MRI for everyone
+
 V3_EFFECTS = {
     # log-scale effects on plasma p-tau217, independent of amyloid
     "thyroid": np.log(1.10),        # thyroid disease: higher p-tau217 (weak, inconsistent evidence; ASSUMED size)
@@ -313,7 +315,7 @@ def _extended_factors(n, seed, age, female, egfr, bmi, tg, stage, amyloid, tau, 
                                + 0.2 * cvd + 0.01 * np.clip(70 - egfr, 0, None) + rng.normal(0, 0.7, n)), 0, 3)
     mmse = np.clip(np.round(np.select([stage == 0, stage == 1], [28.6, 26.2], 21.0) - 0.04 * (age - 72)
                             - 1.0 * e * tau_pos + rng.normal(0, 1.7, n)), 0, 30)
-    mri_available = rng.random(n) < 0.55                      # MRI rating present in about half of patients
+    mri_available = rng.random(n) < MRI_AVAILABILITY          # MRI rating present in about half of patients
     shift = (e * V3_EFFECTS["thyroid"] * thyroid + e * V3_EFFECTS["osa"] * osa
              + e * V3_EFFECTS["tg"] * np.log(tg / 125)
              + e * V3_EFFECTS["hyperfiltration"] * np.clip(egfr - 90, 0, None))
