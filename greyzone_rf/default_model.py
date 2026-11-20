@@ -7,6 +7,10 @@ config.yaml -> default_model:
 A file ``manifest.json`` next to the model records exactly which dataset was used
 (path, SHA-256 fingerprint, number of patients) and the library versions, so the
 provenance of the shipped model can always be checked.
+
+There is one shipped model per model type (estimators.MODEL_TYPES), all trained on the same dataset:
+the Random Forest in ``model_dir`` (models/default) and the others in ``<model_dir>_<type>``
+(e.g. models/default_logistic_regression).
 """
 
 from __future__ import annotations
@@ -18,15 +22,28 @@ from pathlib import Path
 
 from .config import PROJECT_ROOT, load_config
 from .data import load_patient_file
+from .estimators import DEFAULT_TYPE, MODEL_TYPES
 from .model import load_bundle, save_bundle, train_model
 from .report import write_report
 
 
-def _paths(cfg: dict) -> tuple[Path, Path]:
+def _paths(cfg: dict, kind: str = DEFAULT_TYPE) -> tuple[Path, Path]:
     section = cfg.get("default_model") or {}
     data = PROJECT_ROOT / section.get("training_file", "data/default_training/synthetic_training_dataset.xlsx")
     model = PROJECT_ROOT / section.get("model_dir", "models/default")
+    if kind != DEFAULT_TYPE:
+        model = model.with_name(f"{model.name}_{kind}")
     return data, model
+
+
+def shipped_types(cfg: dict) -> list[str]:
+    """Model types offered in the app (config.yaml -> model_types; default: all)."""
+    wanted = cfg.get("model_types") or list(MODEL_TYPES)
+    return [k for k in wanted if k in MODEL_TYPES]
+
+
+def default_dir(cfg: dict | None = None, kind: str = DEFAULT_TYPE) -> Path:
+    return _paths(cfg or load_config(), kind)[1]
 
 
 def file_sha256(path: Path) -> str:
@@ -37,18 +54,21 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def train_default(cfg: dict | None = None, progress=None, nested: bool | None = None) -> dict:
-    """Train the default model from the configured dataset and write the manifest."""
+def train_default(cfg: dict | None = None, progress=None, nested: bool | None = None,
+                  kind: str = DEFAULT_TYPE) -> dict:
+    """Train the default model of one model type from the configured dataset and write the manifest."""
     cfg = cfg or load_config()
-    data_path, model_dir = _paths(cfg)
+    data_path, model_dir = _paths(cfg, kind)
     if not data_path.exists():
         raise FileNotFoundError(f"Default training dataset not found: {data_path}")
     prepared = load_patient_file(data_path, cfg, require_label=True)
-    bundle = train_model(prepared, cfg, nested=nested, progress=progress, source_name=data_path.name)
+    bundle = train_model(prepared, cfg, nested=nested, progress=progress, source_name=data_path.name,
+                         model_type_name=kind)
     save_bundle(bundle, model_dir)
     write_report(bundle, model_dir)
     manifest = {
         "trained": bundle["created"],
+        "model_type": kind,
         "training_file": str(data_path.relative_to(PROJECT_ROOT)),
         "training_file_sha256": file_sha256(data_path),
         "rows_in_file": prepared.n,
@@ -62,10 +82,10 @@ def train_default(cfg: dict | None = None, progress=None, nested: bool | None = 
     return bundle
 
 
-def default_status(cfg: dict | None = None) -> dict:
-    """What is the state of the shipped model? Never raises."""
+def default_status(cfg: dict | None = None, kind: str = DEFAULT_TYPE) -> dict:
+    """What is the state of the shipped model of this type? Never raises."""
     cfg = cfg or load_config()
-    data_path, model_dir = _paths(cfg)
+    data_path, model_dir = _paths(cfg, kind)
     status = {"data_path": data_path, "model_dir": model_dir, "data_exists": data_path.exists(),
               "model_exists": (model_dir / "model.joblib").exists(), "loadable": False,
               "manifest": None, "dataset_matches": None, "error": None}

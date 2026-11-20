@@ -1,0 +1,31 @@
+{
+  "trained": "2026-11-20T10:26:30",
+  "model_type": "ensemble",
+  "training_file": "data/default_training/synthetic_training_dataset.xlsx",
+  "training_file_sha256": "90607fe988031a7054501d7a83ceb260b4b6ce756de9b378360d9cba83441f98",
+  "rows_in_file": 600,
+  "training_patients": 600,
+  "thresholds": {
+    "positive": 0.76,
+    "negative": 0.18
+  },
+  "features": [
+    "egfr",
+    "triglycerides",
+    "anemia",
+    "ptau217",
+    "ab42_ab40_ratio",
+    "ptau217_ab42_ratio",
+    "apoe4",
+    "hypertension",
+    "stroke",
+    "clinical_stage"
+  ],
+  "versions": {
+    "python": "3.13.18",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5"
+  },
+  "written": "2026-11-20T10:26:31"
+}

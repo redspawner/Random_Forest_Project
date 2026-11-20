@@ -33,6 +33,27 @@ later with a Coimbra cohort. Answer in English. The user's own guidelines overri
   rejected 2,500 as unrealistic). `train.py --default` retrains it. The app retrains it automatically if
   it is missing or incompatible.
 
+## Model types (added 2026-11-20)
+- **Switch at the top right** of the app: Random Forest (default, unchanged), Logistic Regression,
+  Gradient Boosting (HistGB), Extra Trees, SVM (Platt) and Ensemble (RF+LR+GB).
+  - `greyzone_rf/estimators.py`; settings in `config.yaml → models:`; `model_types:` lists what the
+    switch offers.
+  - Same procedure, the same 90/90 rule with 95 % confidence, and the same safeguards for every
+    model (`tests/test_models.py`).
+- **Shipped models:** `models/default` (RF) and `models/default_<type>`. Each folder has
+  `model_info.json`; bundles store `model_type`, `nested_scores` and `nested_decisions`. Older
+  bundles load as RF.
+- **Compare models tab** (`greyzone_rf/compare.py`): table, paired bootstrap differences, ROC /
+  LPs-avoided / calibration figures, and every model on one file.
+- **Results (synthetic):**
+  - LR is best: nested 59 % of LPs avoided vs RF 38 % (19 vs 17 wrong calls);
+  - GB makes the fewest errors;
+  - all six meet PPV/NPV ≥ 90 % on 6,000 independent synthetic patients;
+  - the generator is log-linear, so it favours LR; redo the ranking on real data.
+- Full detail: `docs/MODEL_COMPARISON.md`; reproduce with `tools/benchmark_models.py`.
+- **Output column changes:** `AI RF score` → `AI score`, plus `AI model`. The results key
+  `rf_score` → `score`.
+
 ## Data
 - **Hybrid synthetic dataset:**
   - real clinical covariates from the **Cardiovascular Health Study MRI sub-study** (n = 735; rigr /

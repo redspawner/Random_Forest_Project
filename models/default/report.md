@@ -1,10 +1,11 @@
 # Training report - grey-zone Random Forest
 
-*Trained 2026-11-11T17:47:52* - source: `synthetic_training_dataset.xlsx`
+*Trained 2026-11-20T10:25:12* - source: `synthetic_training_dataset.xlsx`
 
 ## Cohort
 - Rows in file: 600; excluded: 0 without LP result, 0 without p-tau217, 0 outside the grey zone [0.14-0.43 pg/mL].
 - **Training patients: 600** (218 LP-positive, 382 LP-negative; prevalence 36.3%).
+- Model: **Random Forest** (n_estimators=500, min_samples_leaf=3, max_features=sqrt, max_depth=None, class_weight=None).
 - Variables used (10): egfr, triglycerides, anemia, ptau217, ab42_ab40_ratio, ptau217_ab42_ratio, apoe4, hypertension, stroke, clinical_stage.
 
 ## Discrimination (repeated cross-validation)
@@ -14,7 +15,7 @@
 ## Decision thresholds used for new patients
 Rule: PPV >= 90% for POSITIVE calls and NPV >= 90% for NEGATIVE calls, using the one-sided 95% Clopper-Pearson lower bound >= target.
 
-| Call | Threshold on RF score | Training calls | Correct | Estimate | Lower bound |
+| Call | Threshold on score | Training calls | Correct | Estimate | Lower bound |
 |---|---|---|---|---|---|
 | POSITIVE | >= 0.76 | 89 | 85 | PPV 95.5% | 90.0% |
 | NEGATIVE | <= 0.18 | 236 | 221 | NPV 93.6% | 90.4% |

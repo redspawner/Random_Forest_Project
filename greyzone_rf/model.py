@@ -1,15 +1,16 @@
-"""Training of the grey-zone Random Forest and selection of the safe thresholds.
+"""Training of the grey-zone model (Random Forest or another algorithm) and selection of the safe thresholds.
 
 Procedure (what "training" means here)
 --------------------------------------
 1. Keep grey-zone patients with a lumbar-puncture (LP) result.
 2. Repeated stratified K-fold cross-validation: every patient gets an
-   out-of-fold (OOF) Random-Forest score from models that never saw them.
+   out-of-fold (OOF) model score from models that never saw them.
 3. On those OOF scores choose two thresholds:
-      score >= T_pos -> POSITIVE   (PPV >= 95%, by default proven with 95% confidence)
-      score <= T_neg -> NEGATIVE   (NPV >= 95%, idem)
+      score >= T_pos -> POSITIVE   (PPV >= target, by default proven with 95% confidence)
+      score <= T_neg -> NEGATIVE   (NPV >= target, idem)
       otherwise      -> INCONCLUSIVE -> lumbar puncture
-4. Fit the final Random Forest on all training patients (used for new patients).
+4. Fit the final model on all training patients (used for new patients).
+   The algorithm is chosen with cfg["model_type"] (see estimators.py); everything else is identical.
 5. (Optional, default on) Nested cross-validation: repeat steps 2-4 inside
    each outer fold and apply the result to the held-out outer fold. This is an
    honest estimate of how many LPs the procedure saves and how often it is wrong.
@@ -18,6 +19,7 @@ Procedure (what "training" means here)
 from __future__ import annotations
 
 import datetime as dt
+import json
 import platform
 from pathlib import Path
 from typing import Callable
@@ -27,13 +29,13 @@ from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
 import sklearn
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedKFold
 
 from .config import config_snapshot, model_feature_names
 from .data import PreparedData, in_grey_zone
+from .estimators import DEFAULT_TYPE, build_estimator, model_label, model_type
 from .i18n import column_name
 from .i18n import tr as translate
 from .stats import (INCONCLUSIVE, apply_thresholds, bootstrap_auc_ci, minimum_calls_needed,
@@ -58,17 +60,9 @@ class _Counter:
             self.callback(min(self.done / self.total, 1.0), message)
 
 
-def build_forest(cfg: dict, seed: int, n_jobs: int | None = None) -> RandomForestClassifier:
-    params = dict(cfg["random_forest"])
-    return RandomForestClassifier(
-        n_estimators=int(params.get("n_estimators", 500)),
-        min_samples_leaf=int(params.get("min_samples_leaf", 3)),
-        max_features=params.get("max_features", "sqrt"),
-        max_depth=params.get("max_depth"),
-        class_weight=params.get("class_weight"),
-        n_jobs=params.get("n_jobs", -1) if n_jobs is None else n_jobs,
-        random_state=seed,
-    )
+def build_forest(cfg: dict, seed: int, n_jobs: int | None = None):
+    """The configured model (name kept for backward compatibility; see estimators.build_estimator)."""
+    return build_estimator(cfg, seed, n_jobs=n_jobs)
 
 
 def _n_folds(y: np.ndarray, requested: int) -> int:
@@ -138,7 +132,7 @@ def fit_procedure(X, y, cfg, n_repeats, seed, importance=False, counter=None, pa
     sel_neg = select_threshold(oof["scores"], y, "negative", float(dec["target_npv"]), **kwargs)
     forest = build_forest(cfg, seed, n_jobs=None if parallel else 1).fit(X, y)
     if counter:
-        counter.step("Fitting final Random Forest")
+        counter.step(translate("Fitting the final model"))
     thresholds = {
         "positive": sel_pos["chosen"]["threshold"] if sel_pos["chosen"] else None,
         "negative": sel_neg["chosen"]["threshold"] if sel_neg["chosen"] else None,
@@ -206,8 +200,14 @@ def _select_training_rows(prepared: PreparedData, cfg: dict) -> tuple[np.ndarray
 
 
 def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
-                progress: Progress = None, source_name: str = "") -> dict:
-    """Train the full procedure and return a model bundle (a plain dict)."""
+                progress: Progress = None, source_name: str = "", model_type_name: str | None = None) -> dict:
+    """Train the full procedure and return a model bundle (a plain dict).
+
+    ``model_type_name`` (e.g. "logistic_regression") overrides cfg["model_type"]; see estimators.py.
+    """
+    if model_type_name is not None:
+        cfg = {**cfg, "model_type": model_type_name}
+    kind = model_type(cfg)
     val = cfg["validation"]
     seed = int(val["random_state"])
     nested = bool(val["nested_cv"]) if nested is None else nested
@@ -268,17 +268,19 @@ def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
         "patient_id": [prepared.ids[i] for i in rows],
         "lp_result": np.where(y == 1, translate("Positive"), translate("Negative")),
         "ptau217": X["ptau217"].to_numpy(),
-        "rf_score_oof": np.round(oof_scores, 4),
+        "score_oof": np.round(oof_scores, 4),
         "decision_oof": [_decision_word(d) for d in oof_decisions],
         "missing_fraction": np.round(missing_fraction(X), 3),
         "data_issues": ["; ".join(prepared.row_issues[i]) for i in rows],
     })
     if nested_result:
-        predictions["rf_score_nested"] = np.round(nested_result["scores"], 4)
+        predictions["score_nested"] = np.round(nested_result["scores"], 4)
         predictions["decision_nested"] = [_decision_word(d) for d in nested_result["decisions"]]
 
     report = {
         "created": dt.datetime.now().isoformat(timespec="seconds"),
+        "model_type": kind,
+        "model_label": model_label(kind),
         "source_file": source_name,
         "cohort": {**exclusions, "n_train": int(len(y)), "n_lp_positive": n_pos, "n_lp_negative": n_neg,
                    "prevalence": n_pos / len(y)},
@@ -312,6 +314,7 @@ def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
 
     return {
         "format_version": FORMAT_VERSION,
+        "model_type": kind,
         "created": report["created"],
         "model": proc["model"],
         "features": features,
@@ -320,6 +323,8 @@ def train_model(prepared: PreparedData, cfg: dict, nested: bool | None = None,
         "training_ranges": {f: [float(np.nanmin(X[f])), float(np.nanmax(X[f]))] for f in features},
         "oof_scores": oof_scores,
         "oof_labels": y,
+        "nested_scores": None if nested_result is None else nested_result["scores"],
+        "nested_decisions": None if nested_result is None else nested_result["decisions"],
         "predictions": predictions,
         "report": report,
         "versions": {"python": platform.python_version(), "scikit-learn": sklearn.__version__,
@@ -336,7 +341,21 @@ def save_bundle(bundle: dict, out_dir: str | Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "model.joblib"
     joblib.dump(bundle, path, compress=3)
+    info = {"model_type": bundle.get("model_type", DEFAULT_TYPE), "created": bundle["created"],
+            "source_file": bundle["report"].get("source_file"), "n_train": bundle["report"]["cohort"]["n_train"]}
+    (out_dir / "model_info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
     return path
+
+
+def model_info(folder: str | Path) -> dict:
+    """Small description of a saved model without loading it (model_info.json; older folders: Random Forest)."""
+    path = Path(folder) / "model_info.json"
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            pass
+    return {"model_type": DEFAULT_TYPE}
 
 
 def load_bundle(path: str | Path) -> dict:
@@ -352,4 +371,7 @@ def load_bundle(path: str | Path) -> dict:
     if not isinstance(bundle, dict) or bundle.get("format_version") != FORMAT_VERSION:
         raise TrainingError(translate("{path} is not a model file produced by this project (or an old version).",
                                       path=path))
+    bundle.setdefault("model_type", DEFAULT_TYPE)          # models saved before other algorithms existed
+    bundle["report"].setdefault("model_type", bundle["model_type"])
+    bundle["report"].setdefault("model_label", model_label(bundle["model_type"]))
     return bundle

@@ -9,16 +9,25 @@ safely**.
  plasma p-tau217  ─────────────────────────────────────────────────────────────
    < 0.14 pg/mL   → NEGATIVE           (model not applied)
    > 0.43 pg/mL   → POSITIVE           (model not applied)
-   0.14 – 0.43    → GREY ZONE ──► Stage 2: Random Forest on blood + clinical + MRI variables
+   0.14 – 0.43    → GREY ZONE ──► Stage 2: ML model (Random Forest by default) on blood + clinical variables
                                        │
                                        ├─ score ≥ T_pos → POSITIVE   (PPV ≥ 90 %, proven with 95 % confidence)
                                        ├─ score ≤ T_neg → NEGATIVE   (NPV ≥ 90 %, proven with 95 % confidence)
                                        └─ otherwise     → INCONCLUSIVE → lumbar puncture (as before)
 ```
 
-The LP result is the label used to train the model. Everything else (age, sex, eGFR, BMI,
-triglycerides, p-tau217, p-tau181, Aβ42, Aβ40, GFAP, NfL, APOE, MoCA, MRI MTA and Fazekas
-scores, and any variable you add) is a feature.
+The LP result is the label used to train the model. The model uses 10 variables: p-tau217, the
+Aβ42/Aβ40 and p-tau217/Aβ42 ratios, APOE ε4, clinical stage, eGFR, anaemia, triglycerides,
+hypertension and stroke (see section 4). Others can be added in `config.yaml`.
+
+**Six interchangeable models.** A switch at the top right of the app selects the model that
+computes the score: **Random Forest** (default), **Logistic Regression**, **Gradient Boosting**,
+**Extra Trees**, **Support Vector Machine** or an **Ensemble** (RF + LR + GB). Every model is
+trained with the same procedure, must meet the same 90 % PPV / 90 % NPV rule proven with 95 %
+confidence, and has the same safety checks. The **Compare models** tab shows them side by side.
+On the synthetic data, Logistic Regression avoids the most lumbar punctures (59 % vs 38 % for the
+Random Forest in nested validation), and all six meet the 90 % targets on 6,000 independent
+synthetic patients. Details: [`docs/MODEL_COMPARISON.md`](docs/MODEL_COMPARISON.md).
 
 > **Research prototype, not a medical device.** Every number shown by the demo comes from
 > **synthetic (artificial) patients**. Before any clinical use, the procedure must be validated
@@ -84,6 +93,23 @@ else.
 **`INICIAR_APLICACAO.bat`**. The app, the Excel template, the results files and the training report
 are in European Portuguese, for example POSITIVO / NEGATIVO / INCONCLUSIVO, the columns
 `IA decisão`… and Portuguese column names such as `idade`, `sexo`, `TFGe` and `resultado_PL`.
+
+### Choosing the model (switch at the top right)
+
+- **Classify new patients**, **Model report** and **Train model** use the model selected at the
+  top right. The sidebar shows the trained models of that type.
+- One shipped model per type is in `models/default` (Random Forest) and `models/default_<type>`,
+  all trained on the same default dataset (`python train.py --default --model all` retrains them).
+- **Train model → "Train every model type on this file"** trains all types on your data, which is
+  needed for a fair comparison on the Coimbra cohort.
+- **Compare models** shows:
+  - a table with AUC, Brier score, thresholds and the honest (nested) LPs avoided, wrong calls,
+    PPV and NPV;
+  - figures for LPs avoided, ROC curves and calibration;
+  - paired differences against a reference model, with bootstrap confidence intervals;
+  - an upload box that classifies a file with every model and shows where they agree.
+- Settings for each model are in `config.yaml → models:`. `model_types:` lists which models the
+  switch offers.
 
 ### Interface language
 
@@ -441,6 +467,7 @@ docs/PROJECT_GUIDE.md    step-by-step guide to the whole project
 docs/VARIABLE_ANALYSIS.md which variables help / were removed
 analyze_variables.py     leave-one-variable-out analysis on any training file
 install.bat / .sh        one-click installation
+tools/benchmark_models.py compares all model types (nested CV + independent synthetic cohort)
 tools/build_portable.py  builds the portable Windows bundle (no installation needed; --lang pt = Portuguese)
 .github/workflows/       builds and tests that bundle on Windows for every push
 greyzone_rf/
@@ -452,6 +479,8 @@ greyzone_rf/
   report.py              training report and figures
   template.py            Excel template
   i18n.py / i18n_pt.py   interface language (English / European Portuguese texts)
+  estimators.py          the model types (RF, LR, GB, Extra Trees, SVM, Ensemble) and their settings
+  compare.py             comparison table, paired bootstrap differences, comparison figures
   synthetic.py           synthetic memory-clinic cohort, calibrated to published values
   default_model.py       train/check the shipped default model and its manifest
 templates/               Excel template

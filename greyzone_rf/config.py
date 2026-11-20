@@ -79,6 +79,14 @@ def validate_config(cfg: dict) -> None:
         if section not in cfg:
             raise ConfigError(f"config.yaml: missing section '{section}'")
 
+    from .estimators import MODEL_TYPES
+
+    for kind in cfg.get("model_types") or []:
+        if kind not in MODEL_TYPES:
+            raise ConfigError(f"config.yaml: model_types: unknown model '{kind}' (choose from {', '.join(MODEL_TYPES)})")
+    if cfg.get("model_type") and cfg["model_type"] not in MODEL_TYPES:
+        raise ConfigError(f"config.yaml: unknown model_type '{cfg['model_type']}'")
+
     gz = cfg["grey_zone"]
     if not 0 <= gz["ptau217_lower"] < gz["ptau217_upper"]:
         raise ConfigError("config.yaml: grey_zone.ptau217_lower must be < ptau217_upper")

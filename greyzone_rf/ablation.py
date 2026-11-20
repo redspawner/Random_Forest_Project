@@ -3,7 +3,7 @@
 For the full variable set and for every set with ONE variable removed, the same repeated
 cross-validation is run (same patients, same folds). The table compares:
 
-    AUC                 discrimination of the cross-validated RF score
+    AUC                 discrimination of the cross-validated model score
     resolved            % of grey-zone patients that get a 95%-certified answer (LPs avoided)
     errors              wrong calls among them
 

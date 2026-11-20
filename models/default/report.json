@@ -1,5 +1,7 @@
 {
-  "created": "2026-11-11T17:47:52",
+  "created": "2026-11-20T10:25:12",
+  "model_type": "random_forest",
+  "model_label": "Random Forest",
   "source_file": "synthetic_training_dataset.xlsx",
   "cohort": {
     "rows_in_file": 600,

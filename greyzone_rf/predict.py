@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .data import PreparedData, in_grey_zone
+from .estimators import model_label, model_short
 from .i18n import column_name, tr
 from .model import missing_fraction
 from .stats import INCONCLUSIVE, NEGATIVE, POSITIVE, apply_thresholds
@@ -41,6 +42,7 @@ def predict_prepared(bundle: dict, prepared: PreparedData) -> pd.DataFrame:
     details = bundle["report"]["threshold_details"]
     features = bundle["features"]
     conf = float(cfg["decision"]["confidence_level"])
+    short = model_short(bundle.get("model_type"))
 
     X = prepared.table.reindex(columns=features)
     ptau = prepared.table["ptau217"].to_numpy(float)
@@ -83,11 +85,11 @@ def predict_prepared(bundle: dict, prepared: PreparedData) -> pd.DataFrame:
             code = codes[i]
             if code == POSITIVE:
                 decision = POSITIVE_TXT
-                reason = tr("RF score {s:.3f} >= rule-in threshold {t:.2f}; {pv}.", s=score,
+                reason = tr("{model} score {s:.3f} >= rule-in threshold {t:.2f}; {pv}.", model=short, s=score,
                             t=thresholds["positive"], pv=_pv_text(details["positive"], "PPV", conf))
             elif code == NEGATIVE:
                 decision = NEGATIVE_TXT
-                reason = tr("RF score {s:.3f} <= rule-out threshold {t:.2f}; {pv}.", s=score,
+                reason = tr("{model} score {s:.3f} <= rule-out threshold {t:.2f}; {pv}.", model=short, s=score,
                             t=thresholds["negative"], pv=_pv_text(details["negative"], "NPV", conf))
             else:
                 decision = INCONCLUSIVE_TXT
@@ -96,8 +98,8 @@ def predict_prepared(bundle: dict, prepared: PreparedData) -> pd.DataFrame:
                              else tr("no safe rule-out threshold"))
                 parts.append(tr("rule-in >= {t:.2f}", t=thresholds["positive"]) if thresholds["positive"] is not None
                              else tr("no safe rule-in threshold"))
-                reason = tr("RF score {s:.3f} is not in a zone with demonstrated PPV/NPV >= {ppv:.0%}/{npv:.0%} "
-                            "({parts}). Refer to lumbar puncture.", s=score, ppv=cfg["decision"]["target_ppv"],
+                reason = tr("{model} score {s:.3f} is not in a zone with demonstrated PPV/NPV >= {ppv:.0%}/{npv:.0%} "
+                            "({parts}). Refer to lumbar puncture.", model=short, s=score, ppv=cfg["decision"]["target_ppv"],
                             npv=cfg["decision"]["target_npv"], parts="; ".join(parts))
             for f in features:
                 v = X.iloc[i][f]
@@ -107,7 +109,7 @@ def predict_prepared(bundle: dict, prepared: PreparedData) -> pd.DataFrame:
         rows.append({
             "patient_id": prepared.ids[i],
             "decision": decision,
-            "rf_score": round(float(score), 4) if not np.isnan(score) else None,
+            "score": round(float(score), 4) if not np.isnan(score) else None,
             "ptau217": ptau[i] if not np.isnan(ptau[i]) else None,
             "explanation": reason,
             "missing_variables": ", ".join(missing_vars),
@@ -129,10 +131,11 @@ def results_to_excel(results: pd.DataFrame, prepared: PreparedData, bundle: dict
     none = tr("none")
     info = [
         (tr("Generated"), pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")),
+        (tr("Model type"), model_label(bundle.get("model_type"))),
         (tr("Model trained"), bundle["created"]),
         (tr("Training patients (grey zone)"), report["cohort"]["n_train"]),
-        (tr("Rule-in threshold (RF score >=)"), thr["positive"] if thr["positive"] is not None else none),
-        (tr("Rule-out threshold (RF score <=)"), thr["negative"] if thr["negative"] is not None else none),
+        (tr("Rule-in threshold (score >=)"), thr["positive"] if thr["positive"] is not None else none),
+        (tr("Rule-out threshold (score <=)"), thr["negative"] if thr["negative"] is not None else none),
         (tr("Target PPV / NPV"), f"{bundle['config']['decision']['target_ppv']:.0%} / "
                                  f"{bundle['config']['decision']['target_npv']:.0%}"),
         (tr("Confidence bound required"), tr("yes") if bundle["config"]["decision"]["use_confidence_bound"]
@@ -159,7 +162,7 @@ def results_to_excel(results: pd.DataFrame, prepared: PreparedData, bundle: dict
 
 def result_headers() -> dict[str, str]:
     """Column headers of the results table in the interface language."""
-    return {"patient_id": tr("patient_id"), "decision": tr("decision"), "rf_score": tr("rf_score"),
+    return {"patient_id": tr("patient_id"), "decision": tr("decision"), "score": tr("score"),
             "ptau217": "ptau217", "explanation": tr("explanation"), "missing_variables": tr("missing_variables"),
             "notes": tr("notes")}
 
@@ -188,13 +191,14 @@ def _style_results(sheet, results: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 ANNOTATION_COLUMNS = {
     tr("AI decision"): "decision",
-    tr("AI RF score"): "rf_score",
+    tr("AI model"): "model",
+    tr("AI score"): "score",
     tr("AI explanation"): "explanation",
     tr("AI missing variables"): "missing_variables",
     tr("AI notes"): "notes",
 }
 INFO_SHEET = tr("AI prediction info")
-_WIDTHS = {"decision": 32, "rf_score": 12, "explanation": 80, "missing_variables": 30, "notes": 40}
+_WIDTHS = {"decision": 32, "model": 22, "score": 12, "explanation": 80, "missing_variables": 30, "notes": 40}
 _FILLS = {
     POSITIVE_TXT: "F8D7D3", NEGATIVE_TXT: "D5ECDD", INCONCLUSIVE_TXT: "FCEBC5",
     NOT_APPLICABLE_TXT: "E7E6E2", CHECK_DATA_TXT: "E7E6E2",
@@ -208,12 +212,13 @@ def _info_rows(results: pd.DataFrame, bundle: dict) -> list[tuple[str, str]]:
     uncertified = tr("none (not certified)")
     rows = [
         (tr("Generated"), pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")),
+        (tr("Model type"), model_label(bundle.get("model_type"))),
         (tr("Model trained"), str(bundle["created"])),
         (tr("Training data"), str(bundle["report"].get("source_file") or "")),
         (tr("Training patients (grey zone)"), str(bundle["report"]["cohort"]["n_train"])),
         (tr("Grey zone (p-tau217, pg/mL)"), f"{gz['ptau217_lower']} - {gz['ptau217_upper']}"),
-        (tr("POSITIVE if RF score >="), uncertified if thr["positive"] is None else f"{thr['positive']:.2f}"),
-        (tr("NEGATIVE if RF score <="), uncertified if thr["negative"] is None else f"{thr['negative']:.2f}"),
+        (tr("POSITIVE if score >="), uncertified if thr["positive"] is None else f"{thr['positive']:.2f}"),
+        (tr("NEGATIVE if score <="), uncertified if thr["negative"] is None else f"{thr['negative']:.2f}"),
         (tr("Safety target"), tr("PPV >= {ppv:.0%}, NPV >= {npv:.0%}", ppv=dec["target_ppv"], npv=dec["target_npv"])
          + (tr(" (one-sided {conf:.0%} lower bound)", conf=dec["confidence_level"])
             if dec["use_confidence_bound"] else tr(" (point estimate)"))),
@@ -266,7 +271,7 @@ def annotated_original(results: pd.DataFrame, prepared: PreparedData, bundle: di
     for i, excel_row in enumerate(rows):
         result = results.iloc[i]
         for name, key in ANNOTATION_COLUMNS.items():
-            value = result[key]
+            value = model_label(bundle.get("model_type")) if key == "model" else result[key]
             value = None if value is None or (isinstance(value, float) and pd.isna(value)) or value == "" else value
             cell = ws.cell(row=excel_row, column=columns[name], value=value)
             if key == "decision":

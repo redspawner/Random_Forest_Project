@@ -1,0 +1,6 @@
+{
+  "model_type": "svm",
+  "created": "2026-11-20T10:25:56",
+  "source_file": "synthetic_training_dataset.xlsx",
+  "n_train": 600
+}

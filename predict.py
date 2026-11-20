@@ -22,7 +22,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("file", help="patients file (.xlsx or .csv)")
     parser.add_argument("--model", default=str(PROJECT_ROOT / "models" / "default"),
-                        help="model folder or file (default: the shipped default model)")
+                        help="model folder or file (default: the shipped Random Forest; e.g. "
+                             "models/default_logistic_regression for the shipped Logistic Regression)")
     parser.add_argument("--out", default=None, help="results file (default: <input>_results.xlsx)")
     args = parser.parse_args()
 
@@ -46,7 +47,7 @@ def main() -> int:
     for message in prepared.messages:
         print(tr("Note: {message}", message=message))
     print()
-    print(results[["patient_id", "decision", "rf_score", "ptau217"]].rename(columns=result_headers())
+    print(results[["patient_id", "decision", "score", "ptau217"]].rename(columns=result_headers())
           .to_string(index=False))
     print()
     for decision, count in summarize(results).items():

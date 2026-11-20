@@ -1,0 +1,6 @@
+{
+  "model_type": "gradient_boosting",
+  "created": "2026-11-20T10:25:24",
+  "source_file": "synthetic_training_dataset.xlsx",
+  "n_train": 600
+}

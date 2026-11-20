@@ -86,7 +86,6 @@ PT = {
     "Patient": "Doente",
     "Patients": "Doentes",
     "Decision": "Decisão",
-    "RF score": "Pontuação RF",
     "Why": "Porquê",
     "Missing variables": "Variáveis em falta",
     "Notes": "Notas",
@@ -106,7 +105,6 @@ PT = {
     # result table headers
     "patient_id": "id_doente",
     "decision": "decisão",
-    "rf_score": "pontuação_RF",
     "explanation": "explicação",
     "missing_variables": "variáveis_em_falta",
     "notes": "notas",
@@ -144,14 +142,6 @@ PT = {
     "puncture.":
         "Dados insuficientes: faltam {miss:.0%} das variáveis do modelo (limite {limit:.0%}). Referenciar para "
         "punção lombar.",
-    "RF score {s:.3f} >= rule-in threshold {t:.2f}; {pv}.":
-        "Pontuação RF {s:.3f} >= limiar de confirmação {t:.2f}; {pv}.",
-    "RF score {s:.3f} <= rule-out threshold {t:.2f}; {pv}.":
-        "Pontuação RF {s:.3f} <= limiar de exclusão {t:.2f}; {pv}.",
-    "RF score {s:.3f} is not in a zone with demonstrated PPV/NPV >= {ppv:.0%}/{npv:.0%} ({parts}). Refer to "
-    "lumbar puncture.":
-        "A pontuação RF {s:.3f} não está numa zona com VPP/VPN >= {ppv:.0%}/{npv:.0%} demonstrado ({parts}). "
-        "Referenciar para punção lombar.",
     "rule-out <= {t:.2f}": "exclusão <= {t:.2f}",
     "rule-in >= {t:.2f}": "confirmação >= {t:.2f}",
     "no safe rule-out threshold": "sem limiar de exclusão seguro",
@@ -161,7 +151,6 @@ PT = {
 
     # --- Excel outputs ---------------------------------------------------------------------------
     "AI decision": "IA decisão",
-    "AI RF score": "IA pontuação RF",
     "AI explanation": "IA explicação",
     "AI missing variables": "IA variáveis em falta",
     "AI notes": "IA notas",
@@ -171,10 +160,6 @@ PT = {
     "Training data": "Dados de treino",
     "Training patients (grey zone)": "Doentes de treino (zona cinzenta)",
     "Grey zone (p-tau217, pg/mL)": "Zona cinzenta (p-tau217, pg/mL)",
-    "Rule-in threshold (RF score >=)": "Limiar de confirmação (pontuação RF >=)",
-    "Rule-out threshold (RF score <=)": "Limiar de exclusão (pontuação RF <=)",
-    "POSITIVE if RF score >=": "POSITIVO se pontuação RF >=",
-    "NEGATIVE if RF score <=": "NEGATIVO se pontuação RF <=",
     "none (not certified)": "nenhum (não certificado)",
     "Target PPV / NPV": "VPP / VPN alvo",
     "Confidence bound required": "Limite de confiança exigido",
@@ -254,16 +239,13 @@ PT = {
 
     # --- report and figures ----------------------------------------------------------------------
     "{v:.1%} (95% CI {lo:.1%}-{hi:.1%}; {k}/{n})": "{v:.1%} (IC 95% {lo:.1%}-{hi:.1%}; {k}/{n})",
-    "Cross-validated Random-Forest scores": "Pontuações Random Forest em validação cruzada",
     "LP negative": "PL negativa",
     "LP positive": "PL positiva",
     "{name}\n(patients)": "{name}\n(doentes)",
     "NEGATIVE\nscore <= {t:.2f}": "NEGATIVO\npontuação <= {t:.2f}",
     "INCONCLUSIVE\n-> lumbar puncture": "INCONCLUSIVO\n-> punção lombar",
     "POSITIVE\nscore >= {t:.2f}": "POSITIVO\npontuação >= {t:.2f}",
-    "Random-Forest score (out-of-fold)": "Pontuação Random Forest (fora da partição)",
     "p-tau217 alone  AUC {v:.2f}": "p-tau217 isolada  AUC {v:.2f}",
-    "Random Forest  AUC {v:.2f}": "Random Forest  AUC {v:.2f}",
     "1 - specificity": "1 - especificidade",
     "Sensitivity": "Sensibilidade",
     "Discrimination inside the grey zone\n(cross-validated)": "Discriminação dentro da zona cinzenta\n(validação cruzada)",
@@ -273,7 +255,6 @@ PT = {
     "Rule-out (NEGATIVE if score <= t)": "Exclusão (NEGATIVO se pontuação <= t)",
     "Rule-in (POSITIVE if score >= t)": "Confirmação (POSITIVO se pontuação >= t)",
     "patients called": "doentes classificados",
-    "threshold t on the RF score": "limiar t da pontuação RF",
     " chosen t = {t:.2f}": " t escolhido = {t:.2f}",
     "Decrease in cross-validated AUC when the variable is shuffled":
         "Diminuição da AUC em validação cruzada quando a variável é baralhada",
@@ -281,7 +262,6 @@ PT = {
     "one-sided {conf:.0%} Clopper-Pearson lower bound >= target":
         "limite inferior unilateral de Clopper-Pearson a {conf:.0%} >= alvo",
     "point estimate >= target (exploratory mode)": "estimativa pontual >= alvo (modo exploratório)",
-    "# Training report - grey-zone Random Forest": "# Relatório de treino - Random Forest da zona cinzenta",
     "*Trained {created}* - source: `{source}`": "*Treinado em {created}* - origem: `{source}`",
     "## Cohort": "## Coorte",
     "- Rows in file: {rows}; excluded: {no_lp} without LP result, {no_ptau} without p-tau217, {outside} outside "
@@ -292,18 +272,12 @@ PT = {
         "- **Doentes de treino: {n}** ({pos} com PL positiva, {neg} com PL negativa; prevalência {prev:.1%}).",
     "- Variables used ({k}): {names}.": "- Variáveis usadas ({k}): {names}.",
     "## Discrimination (repeated cross-validation)": "## Discriminação (validação cruzada repetida)",
-    "- Random Forest AUC: **{auc:.3f}** (95% CI {lo:.3f}-{hi:.3f}); {folds}-fold x {repeats} repeats, AUC per "
-    "repeat {mn:.3f}-{mx:.3f}.":
-        "- AUC do Random Forest: **{auc:.3f}** (IC 95% {lo:.3f}-{hi:.3f}); {folds} partições x {repeats} "
-        "repetições, AUC por repetição {mn:.3f}-{mx:.3f}.",
     "- p-tau217 alone (inside the grey zone): AUC {auc:.3f} (95% CI {lo:.3f}-{hi:.3f}).":
         "- p-tau217 isolada (dentro da zona cinzenta): AUC {auc:.3f} (IC 95% {lo:.3f}-{hi:.3f}).",
     "## Decision thresholds used for new patients": "## Limiares de decisão usados para novos doentes",
     "Rule: PPV >= {ppv:.0%} for POSITIVE calls and NPV >= {npv:.0%} for NEGATIVE calls, using the {rule}.":
         "Regra: VPP >= {ppv:.0%} para as classificações POSITIVO e VPN >= {npv:.0%} para as classificações "
         "NEGATIVO, usando o critério {rule}.",
-    "| Call | Threshold on RF score | Training calls | Correct | Estimate | Lower bound |":
-        "| Classificação | Limiar da pontuação RF | Classificações no treino | Corretas | Estimativa | Limite inferior |",
     "none could be certified": "nenhum pôde ser certificado",
     "Everything between the two thresholds is **INCONCLUSIVE -> lumbar puncture**.":
         "Tudo o que fica entre os dois limiares é **INCONCLUSIVO -> punção lombar**.",
@@ -368,20 +342,14 @@ PT = {
         "8. A TFGe pode ficar em branco se a creatinina sérica for indicada (calculada com CKD-EPI 2021).",
 
     # --- app -------------------------------------------------------------------------------------
-    "Grey-zone AD triage (Random Forest)": "Triagem DA na zona cinzenta (Random Forest)",
     "Grey-zone AD triage": "Triagem DA na zona cinzenta",
-    "Random Forest on plasma and clinical data of patients with p-tau217 in the grey zone.":
-        "Random Forest com dados plasmáticos e clínicos de doentes com p-tau217 na zona cinzenta.",
     "Runs locally: files are processed in memory on this computer and are not sent anywhere.":
         "Funciona localmente: os ficheiros são processados em memória neste computador e não são enviados para "
         "lado nenhum.",
     "Loading model ...": "A carregar o modelo ...",
     "not found": "não foi encontrado",
     "not compatible with this installation": "não é compatível com esta instalação",
-    "The default model is {reason}: training it from {name} (about 1 minute, only once) ...":
-        "O modelo padrão {reason}: a treiná-lo a partir de {name} (cerca de 1 minuto, só uma vez) ...",
     "Could not train the default model: {exc}": "Não foi possível treinar o modelo padrão: {exc}",
-    "Trained models found in the 'models' folder.": "Modelos treinados encontrados na pasta 'models'.",
     "Could not load this model: {exc}": "Não foi possível carregar este modelo: {exc}",
     "**Trained:** {created}  \n**Training patients:** {n}  \n**Grey zone:** {lo}-{hi} pg/mL  \n**POSITIVE if score "
     ">=** {pos}  \n**NEGATIVE if score <=** {neg}":
@@ -419,10 +387,6 @@ PT = {
     "File notes ({n})": "Notas sobre o ficheiro ({n})",
     "Show decisions": "Mostrar decisões",
     "Download my file with the predictions added": "Descarregar o meu ficheiro com as previsões acrescentadas",
-    "Your uploaded file, unchanged, with extra columns on each patient row: AI decision, RF score, explanation, "
-    "missing variables and notes. A sheet 'AI prediction info' describes the model used.":
-        "O ficheiro que carregou, sem alterações, com colunas extra em cada linha de doente: decisão, pontuação "
-        "RF, explicação, variáveis em falta e notas. Uma folha 'Informação da previsão IA' descreve o modelo usado.",
     "Download results report (Excel)": "Descarregar o relatório de resultados (Excel)",
     "Separate workbook: results table, summary and a copy of the input.":
         "Livro separado: tabela de resultados, resumo e uma cópia dos dados de entrada.",
@@ -442,27 +406,12 @@ PT = {
         "demonstração para experimentar a ferramenta).",
     "Drag and drop the patient file here": "Arraste e largue aqui o ficheiro dos doentes",
     "Train a new model": "Treinar um novo modelo",
-    "Drag and drop the **training file**: grey-zone patients with their variables **and** the lumbar-puncture "
-    "result in the column `lp_result` (Positive/Negative). Settings (grey-zone cut-offs, PPV/NPV targets, "
-    "Random-Forest parameters, list of variables) are read from `config.yaml`.":
-        "Arraste e largue o **ficheiro de treino**: doentes da zona cinzenta com as suas variáveis **e** o "
-        "resultado da punção lombar na coluna `resultado_PL` (ou `lp_result`) (Positivo/Negativo). As definições "
-        "(pontos de corte da zona cinzenta, alvos de VPP/VPN, parâmetros do Random Forest, lista de variáveis) são "
-        "lidas de `config.yaml`.",
     "Drag and drop the training file here": "Arraste e largue aqui o ficheiro de treino",
     "Honest validation with nested cross-validation (recommended, ~1 minute)":
         "Validação honesta com validação cruzada aninhada (recomendado, ~1 minuto)",
     "Model name": "Nome do modelo",
-    "Model saved to `models/{name}`. Click **Use the new model now** (or select it in the sidebar) to classify "
-    "patients with it; details are in **Model report**.":
-        "Modelo guardado em `models/{name}`. Clique em **Usar já o novo modelo** (ou selecione-o na barra lateral) "
-        "para classificar doentes com ele; os detalhes estão em **Relatório do modelo**.",
-    "POSITIVE if score >= **{pos}**, NEGATIVE if score <= **{neg}**.":
-        "POSITIVO se pontuação >= **{pos}**, NEGATIVO se pontuação <= **{neg}**.",
     "Use the new model now": "Usar já o novo modelo",
     "No model selected.": "Nenhum modelo selecionado.",
-    "Out-of-fold RF scores of the training patients, by LP result, with the three zones.":
-        "Pontuações RF fora da partição dos doentes de treino, por resultado da PL, com as três zonas.",
     "How the thresholds were chosen: predictive value and its lower confidence bound for every candidate "
     "threshold.":
         "Como foram escolhidos os limiares: valor preditivo e o seu limite inferior de confiança para cada limiar "
@@ -490,31 +439,6 @@ PT = {
         "o alvo seja demonstrado estatisticamente e não apenas observado.",
     "Only the point estimate must reach the target (exploratory mode).":
         "Basta que a estimativa pontual atinja o alvo (modo exploratório).",
-    "\n1. **Stage 1 (already done at the centre):** plasma p-tau217 < {lo} pg/mL is negative, > {hi} pg/mL is\n"
-    "   positive. Only patients in between are analysed here.\n"
-    "2. **Random Forest:** {trees} decision trees combine all variables into a score between 0 and 1 (missing "
-    "values\n   are handled inside the trees).\n"
-    "3. **Safety thresholds:** during training every patient receives a cross-validated score (from models that "
-    "never\n   saw them). The tool then finds the lowest score above which at least {ppv:.0%} of patients were "
-    "LP-positive\n   (PPV) and the highest score below which at least {npv:.0%} were LP-negative (NPV). {bound}\n"
-    "4. **Everything in between stays INCONCLUSIVE** and is referred to lumbar puncture, exactly as before.\n"
-    "5. **Safety checks:** patients outside the grey zone are not classified by the model; implausible values\n"
-    "   (e.g. haemoglobin = 45 g/dL) block the classification; patients with a red flag (atypical features) or "
-    "missing\n   more than {miss:.0%} of the variables stay inconclusive.\n":
-        "\n1. **Etapa 1 (já feita no centro):** p-tau217 plasmática < {lo} pg/mL é negativa, > {hi} pg/mL é\n"
-        "   positiva. Só os doentes entre esses valores são analisados aqui.\n"
-        "2. **Random Forest:** {trees} árvores de decisão combinam todas as variáveis numa pontuação entre 0 e 1 "
-        "(os valores\n   em falta são tratados dentro das árvores).\n"
-        "3. **Limiares de segurança:** durante o treino cada doente recebe uma pontuação de validação cruzada (de "
-        "modelos que\n   nunca o viram). A ferramenta encontra depois a pontuação mais baixa acima da qual pelo "
-        "menos {ppv:.0%} dos doentes\n   tinham PL positiva (VPP) e a pontuação mais alta abaixo da qual pelo menos "
-        "{npv:.0%} tinham PL negativa (VPN). {bound}\n"
-        "4. **Tudo o que fica entre os limiares continua INCONCLUSIVO** e é referenciado para punção lombar, tal "
-        "como antes.\n"
-        "5. **Verificações de segurança:** os doentes fora da zona cinzenta não são classificados pelo modelo; "
-        "valores implausíveis\n   (p. ex. hemoglobina = 45 g/dL) bloqueiam a classificação; doentes com sinal de "
-        "alarme (características atípicas) ou com\n   mais de {miss:.0%} das variáveis em falta ficam "
-        "inconclusivos.\n",
 
     # --- launcher and command line ---------------------------------------------------------------
     "No free port found between 8501 and 8550.": "Não foi encontrada nenhuma porta livre entre 8501 e 8550.",
@@ -540,4 +464,148 @@ PT = {
     "Note: {message}": "Nota: {message}",
     "Results written to {out}": "Resultados gravados em {out}",
     "Original file with predictions added: {path}": "Ficheiro original com as previsões acrescentadas: {path}",
+
+    # --- model choice and comparison --------------------------------------------------------------
+    'Fitting the final model':
+        'A ajustar o modelo final',
+    'Cross-validated {model} scores':
+        'Pontuações {model} em validação cruzada',
+    '{model} score (out-of-fold)':
+        'Pontuação {model} (fora da partição)',
+    '# Training report - grey-zone {model}':
+        '# Relatório de treino - {model} da zona cinzenta',
+    '- Model: **{model}** ({params}).':
+        '- Modelo: **{model}** ({params}).',
+    '- {model} AUC: **{auc:.3f}** (95% CI {lo:.3f}-{hi:.3f}); {folds}-fold x {repeats} repeats, AUC per repeat {mn:.3f}-{mx:.3f}.':
+        '- AUC do {model}: **{auc:.3f}** (IC 95% {lo:.3f}-{hi:.3f}); {folds} partições x {repeats} repetições, AUC por repetição {mn:.3f}-{mx:.3f}.',
+    '| Call | Threshold on score | Training calls | Correct | Estimate | Lower bound |':
+        '| Classificação | Limiar da pontuação | Classificações no treino | Corretas | Estimativa | Limite inferior |',
+    '{model}  AUC {v:.2f}':
+        '{model}  AUC {v:.2f}',
+    'threshold t on the model score':
+        'limiar t da pontuação do modelo',
+    'Lumbar punctures avoided in nested validation (95% CI)':
+        'Punções lombares evitadas na validação aninhada (IC 95%)',
+    'Mean model score (out-of-fold)':
+        'Pontuação média do modelo (fora da partição)',
+    'Observed share LP-positive':
+        'Proporção observada com PL positiva',
+    'Calibration (closer to the diagonal = better)':
+        'Calibração (mais perto da diagonal = melhor)',
+    'All models agree':
+        'Todos os modelos concordam',
+    'AUC (95% CI)':
+        'AUC (IC 95%)',
+    'Brier score':
+        'Score de Brier',
+    'POSITIVE if score >=':
+        'POSITIVO se pontuação >=',
+    'NEGATIVE if score <=':
+        'NEGATIVO se pontuação <=',
+    'AUC difference (95% CI)':
+        'Diferença de AUC (IC 95%)',
+    'AUC difference significant?':
+        'Diferença de AUC significativa?',
+    'LPs avoided difference significant?':
+        'Diferença de PL evitadas significativa?',
+    '{v:.0%} ({e} wrong)':
+        '{v:.0%} ({e} erradas)',
+    'LPs avoided difference (95% CI)':
+        'Diferença de PL evitadas (IC 95%)',
+    'Wrong-call difference (95% CI)':
+        'Diferença de classificações erradas (IC 95%)',
+    'LPs avoided (nested)':
+        'PL evitadas (aninhada)',
+    'Wrong calls (FP / FN)':
+        'Classificações erradas (FP / FN)',
+    'PPV (nested)':
+        'VPP (aninhada)',
+    'NPV (nested)':
+        'VPN (aninhada)',
+    'score':
+        'pontuação',
+    'Score':
+        'Pontuação',
+    'AI model':
+        'IA modelo',
+    'AI score':
+        'IA pontuação',
+    'Model type':
+        'Tipo de modelo',
+    'Rule-in threshold (score >=)':
+        'Limiar de confirmação (pontuação >=)',
+    'Rule-out threshold (score <=)':
+        'Limiar de exclusão (pontuação <=)',
+    '{model} score {s:.3f} >= rule-in threshold {t:.2f}; {pv}.':
+        'Pontuação {model} {s:.3f} >= limiar de confirmação {t:.2f}; {pv}.',
+    '{model} score {s:.3f} <= rule-out threshold {t:.2f}; {pv}.':
+        'Pontuação {model} {s:.3f} <= limiar de exclusão {t:.2f}; {pv}.',
+    '{model} score {s:.3f} is not in a zone with demonstrated PPV/NPV >= {ppv:.0%}/{npv:.0%} ({parts}). Refer to lumbar puncture.':
+        'A pontuação {model} {s:.3f} não está numa zona com VPP/VPN >= {ppv:.0%}/{npv:.0%} demonstrado ({parts}). Referenciar para punção lombar.',
+    'ML model':
+        'Modelo de ML',
+    '{model} on plasma and clinical data of patients with p-tau217 in the grey zone.':
+        '{model} com dados plasmáticos e clínicos de doentes com p-tau217 na zona cinzenta.',
+    'Trained model':
+        'Modelo treinado',
+    "Algorithm that computes the score. Every model uses the same training procedure, the same {ppv:.0%} PPV / {npv:.0%} NPV rule with {conf:.0%} confidence and the same safety checks. See the tab 'Compare models'.":
+        "Algoritmo que calcula a pontuação. Todos os modelos usam o mesmo procedimento de treino, a mesma regra de {ppv:.0%} de VPP / {npv:.0%} de VPN com {conf:.0%} de confiança e as mesmas verificações de segurança. Ver o separador 'Comparar modelos'.",
+    'Compare models':
+        'Comparar modelos',
+    'Model in use: **{model}** (change it at the top right).':
+        'Modelo em uso: **{model}** (mude-o no canto superior direito).',
+    'Drag and drop the **training file**: grey-zone patients with their variables **and** the lumbar-puncture result in the column `lp_result` (Positive/Negative). Settings (grey-zone cut-offs, PPV/NPV targets, model parameters, list of variables) are read from `config.yaml`.':
+        'Arraste e largue o **ficheiro de treino**: doentes da zona cinzenta com as suas variáveis **e** o resultado da punção lombar na coluna `resultado_PL` (ou `lp_result`) (Positivo/Negativo). As definições (pontos de corte da zona cinzenta, alvos de VPP/VPN, parâmetros dos modelos, lista de variáveis) são lidas de `config.yaml`.',
+    'Train every model type on this file (needed for a fair comparison)':
+        'Treinar todos os tipos de modelo com este ficheiro (necessário para uma comparação justa)',
+    'Will train: {models}':
+        'Vai treinar: {models}',
+    'Comparing the models ...':
+        'A comparar os modelos ...',
+    'Compare the models':
+        'Comparar os modelos',
+    'All models are trained with the same procedure, on the same patients and the same random splits, and must meet the same rule (PPV >= {ppv:.0%} and NPV >= {npv:.0%}, proven with {conf:.0%} confidence) before they may call a patient POSITIVE or NEGATIVE. The best model is the one that **avoids the most lumbar punctures in nested validation without more wrong calls**; AUC only measures how well the scores are ordered.':
+        'Todos os modelos são treinados com o mesmo procedimento, com os mesmos doentes e as mesmas partições aleatórias, e têm de cumprir a mesma regra (VPP >= {ppv:.0%} e VPN >= {npv:.0%}, demonstrados com {conf:.0%} de confiança) antes de poderem classificar um doente como POSITIVO ou NEGATIVO. O melhor modelo é o que **evita mais punções lombares na validação aninhada sem mais classificações erradas**; a AUC só mede se as pontuações estão bem ordenadas.',
+    'Models to compare':
+        'Modelos a comparar',
+    '\n1. **Stage 1 (already done at the centre):** plasma p-tau217 < {lo} pg/mL is negative, > {hi} pg/mL is\n   positive. Only patients in between are analysed here.\n2. **Model ({model}, chosen at the top right):** combines all variables into a score between 0 and 1. Missing\n   values are handled inside the trees (Random Forest, Extra Trees, Gradient Boosting) or replaced by the training\n   median plus a "was missing" indicator (Logistic Regression, SVM).\n3. **Safety thresholds:** during training every patient receives a cross-validated score (from models that never\n   saw them). The tool then finds the lowest score above which at least {ppv:.0%} of patients were LP-positive\n   (PPV) and the highest score below which at least {npv:.0%} were LP-negative (NPV). {bound}\n4. **Everything in between stays INCONCLUSIVE** and is referred to lumbar puncture, exactly as before.\n5. **Safety checks:** patients outside the grey zone are not classified by the model; implausible values\n   (e.g. haemoglobin = 45 g/dL) block the classification; patients with a red flag (atypical features) or missing\n   more than {miss:.0%} of the variables stay inconclusive.\n':
+        '\n1. **Etapa 1 (já feita no centro):** p-tau217 plasmática < {lo} pg/mL é negativa, > {hi} pg/mL é\n   positiva. Só os doentes entre esses valores são analisados aqui.\n2. **Modelo ({model}, escolhido no canto superior direito):** combina todas as variáveis numa pontuação entre 0 e 1. Os valores\n   em falta são tratados dentro das árvores (Random Forest, Extra Trees, Gradient Boosting) ou substituídos pela mediana\n   do treino mais um indicador "estava em falta" (Regressão Logística, SVM).\n3. **Limiares de segurança:** durante o treino cada doente recebe uma pontuação de validação cruzada (de modelos que\n   nunca o viram). A ferramenta encontra depois a pontuação mais baixa acima da qual pelo menos {ppv:.0%} dos doentes\n   tinham PL positiva (VPP) e a pontuação mais alta abaixo da qual pelo menos {npv:.0%} tinham PL negativa (VPN). {bound}\n4. **Tudo o que fica entre os limiares continua INCONCLUSIVO** e é referenciado para punção lombar, tal como antes.\n5. **Verificações de segurança:** os doentes fora da zona cinzenta não são classificados pelo modelo; valores implausíveis\n   (p. ex. hemoglobina = 45 g/dL) bloqueiam a classificação; doentes com sinal de alarme (características atípicas) ou com\n   mais de {miss:.0%} das variáveis em falta ficam inconclusivos.\n',
+    'The default {model} model is {reason}: training it from {name} (about 1 minute, only once) ...':
+        'O modelo padrão {model} {reason}: a treiná-lo a partir de {name} (cerca de 1 minuto, só uma vez) ...',
+    "Trained models of this type found in the 'models' folder.":
+        "Modelos treinados deste tipo encontrados na pasta 'models'.",
+    "Your uploaded file, unchanged, with extra columns on each patient row: AI decision, model, score, explanation, missing variables and notes. A sheet 'AI prediction info' describes the model used.":
+        "O ficheiro que carregou, sem alterações, com colunas extra em cada linha de doente: decisão, modelo, pontuação, explicação, variáveis em falta e notas. Uma folha 'Informação da previsão IA' descreve o modelo usado.",
+    'Report of the **{model}** model `{name}` (change the model at the top right).':
+        'Relatório do modelo **{model}** `{name}` (mude o modelo no canto superior direito).',
+    "By default the shipped models of every type, all trained on the same dataset. To compare models on your own data, train them with 'Train every model type' in the Train model tab.":
+        "Por omissão, os modelos fornecidos de cada tipo, todos treinados com o mesmo conjunto de dados. Para comparar modelos com os seus dados, treine-os com 'Treinar todos os tipos de modelo' no separador Treinar modelo.",
+    'Select at least one model.':
+        'Selecione pelo menos um modelo.',
+    'Reference model for the paired differences':
+        'Modelo de referência para as diferenças emparelhadas',
+    '{model} saved to `models/{name}`: POSITIVE if score >= **{pos}**, NEGATIVE if score <= **{neg}**.':
+        '{model} guardado em `models/{name}`: POSITIVO se pontuação >= **{pos}**, NEGATIVO se pontuação <= **{neg}**.',
+    'Click **Use the new model now** (or select it in the sidebar) to classify patients with it; details are in **Model report** and **Compare models**.':
+        'Clique em **Usar já o novo modelo** (ou selecione-o na barra lateral) para classificar doentes com ele; os detalhes estão em **Relatório do modelo** e **Comparar modelos**.',
+    'Out-of-fold scores of the training patients, by LP result, with the three zones.':
+        'Pontuações fora da partição dos doentes de treino, por resultado da PL, com as três zonas.',
+    'LPs avoided, wrong calls, PPV and NPV come from nested cross-validation (patients never used to build or tune the model): this is the honest estimate for new patients. Brier score: mean squared error of the score as a probability (lower = better calibrated).':
+        'PL evitadas, classificações erradas, VPP e VPN vêm da validação cruzada aninhada (doentes nunca usados para construir ou afinar o modelo): é a estimativa honesta para novos doentes. Score de Brier: erro quadrático médio da pontuação vista como probabilidade (mais baixo = melhor calibrado).',
+    'Classify a file with every model':
+        'Classificar um ficheiro com todos os modelos',
+    '**How to read this page**\n\n- **LPs avoided** is what matters clinically: patients spared a lumbar puncture while every POSITIVE/NEGATIVE call stays within the safety rule.\n- Overlapping confidence intervals mean the models cannot be told apart with these patients.\n- A model can have a similar AUC but avoid fewer LPs: what counts is how many patients fall in the zones where the safety rule is proven.\n- Choosing the best of several models on the same data is slightly optimistic: confirm the choice on an independent cohort.':
+        '**Como ler esta página**\n\n- **PL evitadas** é o que interessa clinicamente: doentes que dispensam a punção lombar mantendo todas as classificações POSITIVO/NEGATIVO dentro da regra de segurança.\n- Intervalos de confiança sobrepostos significam que os modelos não se distinguem com estes doentes.\n- Um modelo pode ter AUC semelhante e evitar menos PL: o que conta é quantos doentes caem nas zonas onde a regra de segurança está demonstrada.\n- Escolher o melhor de vários modelos nos mesmos dados é ligeiramente otimista: confirme a escolha numa coorte independente.',
+    'Paired differences versus {model}':
+        'Diferenças emparelhadas em relação a {model}',
+    "Same patients, same folds; 95% bootstrap confidence intervals (1000 resamples). 'Significant' means the interval excludes zero.":
+        "Mesmos doentes, mesmas partições; intervalos de confiança bootstrap a 95% (1000 reamostragens). 'Significativa' quer dizer que o intervalo não inclui o zero.",
+    "These models were not trained on the same patients, so paired differences cannot be computed. Train them together with 'Train every model type'.":
+        "Estes modelos não foram treinados com os mesmos doentes, por isso não é possível calcular diferenças emparelhadas. Treine-os juntos com 'Treinar todos os tipos de modelo'.",
+    'The models agree on {p:.0%} of the patients.':
+        'Os modelos concordam em {p:.0%} dos doentes.',
+    'Download the comparison (Excel)':
+        'Descarregar a comparação (Excel)',
+    '_model_comparison':
+        '_comparacao_modelos',
 }

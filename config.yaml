@@ -6,7 +6,7 @@
 #    * the Stage-1 plasma p-tau217 grey-zone cut-offs,
 #    * the safety targets (90% PPV / 90% NPV, proven with 95% confidence),
 #    * the validation scheme,
-#    * the Random Forest settings,
+#    * the model settings (Random Forest and the other model types),
 #    * the list of variables (add a new variable = add a block under `features`).
 #
 #  NOTE: a trained model stores a copy of this configuration. Changing this file
@@ -85,6 +85,48 @@ validation:
   inner_repeats: 3
   random_state: 42
   permutation_importance: true
+
+# -----------------------------------------------------------------------------
+#  Models (switch at the top right of the app; comparison in the "Compare models" tab)
+# -----------------------------------------------------------------------------
+#  Every model type goes through the SAME procedure: repeated cross-validation, the PPV/NPV
+#  thresholds proven with the confidence above, nested validation, and the same safety checks
+#  (CHECK DATA, NOT APPLICABLE, red flags, too much missing data). Only the algorithm differs.
+#  The settings below were chosen in docs/MODEL_COMPARISON.md (nested validation on the default
+#  dataset + test on 6,000 independent synthetic patients). The Random Forest is unchanged.
+#  Types offered in the app, in this order (remove a line to hide a model):
+model_types:
+  - random_forest
+  - logistic_regression
+  - gradient_boosting
+  - extra_trees
+  - svm
+  - ensemble
+
+models:
+  logistic_regression:
+    C: 0.5                  # inverse regularisation strength (smaller = simpler model)
+    log_transform: true     # log of right-skewed lab values (p-tau217, triglycerides, ...)
+    class_weight: null
+  gradient_boosting:        # scikit-learn HistGradientBoostingClassifier (handles missing values)
+    learning_rate: 0.03
+    max_iter: 150           # number of boosting rounds (trees)
+    max_leaf_nodes: 4       # small trees: strong protection against over-fitting
+    min_samples_leaf: 20
+    l2_regularization: 1.0
+    class_weight: null
+  extra_trees:              # extremely randomised trees (handles missing values)
+    n_estimators: 500
+    min_samples_leaf: 3
+    max_features: sqrt
+    class_weight: null
+  svm:                      # RBF support vector machine, Platt-scaled to a 0-1 score
+    C: 0.5
+    gamma: scale
+    log_transform: true
+    class_weight: null
+  ensemble:                 # average of the members' scores (soft voting)
+    members: [random_forest, logistic_regression, gradient_boosting]
 
 random_forest:
   n_estimators: 500         # number of trees

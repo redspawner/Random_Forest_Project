@@ -10,6 +10,7 @@ models/*
 !models/.gitkeep
 # ...except the shipped default model
 !models/default/
+!models/default_*/
 
 # PATIENT DATA MUST NEVER BE COMMITTED.
 # Only the synthetic demo files and the template are tracked.

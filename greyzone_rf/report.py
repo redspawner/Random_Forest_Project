@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
+from .estimators import model_label, model_params  # noqa: E402
 from .i18n import column_name, tr  # noqa: E402
 
 # Validated reference palette (see README "Figures").
@@ -60,8 +61,8 @@ def _ci(p: dict) -> str:
 # ---------------------------------------------------------------------------
 # Figures
 # ---------------------------------------------------------------------------
-def plot_scores(scores, y, thresholds, path, title=None):
-    title = title or tr("Cross-validated Random-Forest scores")
+def plot_scores(scores, y, thresholds, path, title=None, label="Random Forest"):
+    title = title or tr("Cross-validated {model} scores", model=label)
     t_pos, t_neg = thresholds["positive"], thresholds["negative"]
     fig, axes = _fig(2, 1, figsize=(8, 5.0), sharex=True)
     bins = np.linspace(0, 1, 41)
@@ -86,7 +87,7 @@ def plot_scores(scores, y, thresholds, path, title=None):
     for x, text in labels:
         axes[0].text(x, 1.03, text, ha="center", va="bottom", fontsize=8, color=INK,
                      transform=axes[0].get_xaxis_transform())
-    axes[1].set_xlabel(tr("Random-Forest score (out-of-fold)"), color=INK_2, fontsize=9)
+    axes[1].set_xlabel(tr("{model} score (out-of-fold)", model=label), color=INK_2, fontsize=9)
     fig.suptitle(title, color=INK, fontsize=11, x=0.01, ha="left")
     fig.tight_layout(rect=(0, 0, 1, 0.99))
     fig.savefig(path, dpi=150)
@@ -101,7 +102,9 @@ def plot_roc(report, path):
     ax.plot(fpr, tpr, color=GRAY, linewidth=2, label=tr("p-tau217 alone  AUC {v:.2f}", v=a["value"]))
     fpr, tpr = report["roc"]["model"]
     a = report["auc_model"]
-    ax.plot(fpr, tpr, color=BLUE, linewidth=2, label=tr("Random Forest  AUC {v:.2f}", v=a["value"]))
+    ax.plot(fpr, tpr, color=BLUE, linewidth=2, label=tr("{model}  AUC {v:.2f}", model=report.get("model_label",
+                                                                                               "Random Forest"),
+                                                        v=a["value"]))
     ax.set_xlabel(tr("1 - specificity"), color=INK_2, fontsize=9)
     ax.set_ylabel(tr("Sensitivity"), color=INK_2, fontsize=9)
     ax.set_xlim(0, 1)
@@ -137,7 +140,7 @@ def plot_safety(report, path):
         ax2 = axes[1, col]
         ax2.plot(rows["threshold"], rows["n_called"], color=INK_2, linewidth=2)
         ax2.set_ylabel(tr("patients called"), color=INK_2, fontsize=9)
-        ax2.set_xlabel(tr("threshold t on the RF score"), color=INK_2, fontsize=9)
+        ax2.set_xlabel(tr("threshold t on the model score"), color=INK_2, fontsize=9)
         for a in (ax, ax2):
             if chosen is not None:
                 a.axvline(chosen, color=INK, linewidth=1)
@@ -173,10 +176,14 @@ def markdown_report(bundle: dict) -> str:
     thr = r["thresholds"]
     det = r["threshold_details"]
     gz = bundle["config"]["grey_zone"]
+    kind = bundle.get("model_type")
+    label = model_label(kind)
+    params = ", ".join(f"{k}={v}" for k, v in model_params(bundle["config"], kind or "random_forest").items()
+                       if k != "n_jobs")
     rule = (tr("one-sided {conf:.0%} Clopper-Pearson lower bound >= target", conf=dec["confidence_level"])
             if dec["use_confidence_bound"] else tr("point estimate >= target (exploratory mode)"))
     lines = [
-        tr("# Training report - grey-zone Random Forest"),
+        tr("# Training report - grey-zone {model}", model=label),
         "",
         tr("*Trained {created}* - source: `{source}`", created=r["created"], source=r["source_file"] or tr("n/a")),
         "",
@@ -187,12 +194,13 @@ def markdown_report(bundle: dict) -> str:
            hi=gz["ptau217_upper"]),
         tr("- **Training patients: {n}** ({pos} LP-positive, {neg} LP-negative; prevalence {prev:.1%}).",
            n=c["n_train"], pos=c["n_lp_positive"], neg=c["n_lp_negative"], prev=c["prevalence"]),
+        tr("- Model: **{model}** ({params}).", model=label, params=params),
         tr("- Variables used ({k}): {names}.", k=len(r["features"]),
            names=", ".join(column_name(f) for f in r["features"])),
         "",
         tr("## Discrimination (repeated cross-validation)"),
-        tr("- Random Forest AUC: **{auc:.3f}** (95% CI {lo:.3f}-{hi:.3f}); {folds}-fold x {repeats} repeats, "
-           "AUC per repeat {mn:.3f}-{mx:.3f}.", auc=r["auc_model"]["value"], lo=r["auc_model"]["ci"][0],
+        tr("- {model} AUC: **{auc:.3f}** (95% CI {lo:.3f}-{hi:.3f}); {folds}-fold x {repeats} repeats, "
+           "AUC per repeat {mn:.3f}-{mx:.3f}.", model=label, auc=r["auc_model"]["value"], lo=r["auc_model"]["ci"][0],
            hi=r["auc_model"]["ci"][1], folds=r["cv"]["folds"], repeats=r["cv"]["repeats"],
            mn=min(r["cv"]["repeat_aucs"]), mx=max(r["cv"]["repeat_aucs"])),
         tr("- p-tau217 alone (inside the grey zone): AUC {auc:.3f} (95% CI {lo:.3f}-{hi:.3f}).",
@@ -203,7 +211,7 @@ def markdown_report(bundle: dict) -> str:
         tr("Rule: PPV >= {ppv:.0%} for POSITIVE calls and NPV >= {npv:.0%} for NEGATIVE calls, using the {rule}.",
            ppv=dec["target_ppv"], npv=dec["target_npv"], rule=rule),
         "",
-        tr("| Call | Threshold on RF score | Training calls | Correct | Estimate | Lower bound |"),
+        tr("| Call | Threshold on score | Training calls | Correct | Estimate | Lower bound |"),
         "|---|---|---|---|---|---|",
     ]
     for side, word, metric in (("positive", tr("POSITIVE"), tr("PPV")), ("negative", tr("NEGATIVE"), tr("NPV"))):
@@ -283,7 +291,8 @@ def write_report(bundle: dict, out_dir: str | Path) -> dict[str, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     r = bundle["report"]
     paths = {k: out_dir / v for k, v in FIGURES.items()}
-    plot_scores(bundle["oof_scores"], bundle["oof_labels"], r["thresholds"], paths["scores"])
+    plot_scores(bundle["oof_scores"], bundle["oof_labels"], r["thresholds"], paths["scores"],
+                label=model_label(bundle.get("model_type")))
     plot_roc(r, paths["roc"])
     plot_safety(r, paths["safety"])
     if r.get("importance"):
