@@ -1,16 +1,16 @@
 # Training report - grey-zone Random Forest
 
-*Trained 2026-11-20T11:24:40* - source: `synthetic_training_dataset.xlsx`
+*Trained 2026-11-20T11:55:47* - source: `synthetic_training_dataset.xlsx`
 
 ## Cohort
 - Rows in file: 600; excluded: 0 without LP result, 0 without p-tau217, 0 outside the grey zone [0.14-0.43 pg/mL].
-- **Training patients: 600** (185 LP-positive, 415 LP-negative; prevalence 30.8%).
+- **Training patients: 600** (188 LP-positive, 412 LP-negative; prevalence 31.3%).
 - Model: **Random Forest** (n_estimators=500, min_samples_leaf=3, max_features=sqrt, max_depth=None, class_weight=None).
-- Variables used (8): egfr, triglycerides, anemia, ptau217, apoe4, hypertension, stroke, clinical_stage.
+- Variables used (10): egfr, triglycerides, anemia, ptau217, apoe4, hypertension, stroke, clinical_stage, bmi, sleep_apnea.
 
 ## Discrimination (repeated cross-validation)
-- Random Forest AUC: **0.801** (95% CI 0.757-0.843); 5-fold x 5 repeats, AUC per repeat 0.791-0.804.
-- p-tau217 alone (inside the grey zone): AUC 0.782 (95% CI 0.737-0.824).
+- Random Forest AUC: **0.803** (95% CI 0.762-0.845); 5-fold x 5 repeats, AUC per repeat 0.789-0.810.
+- p-tau217 alone (inside the grey zone): AUC 0.771 (95% CI 0.725-0.818).
 
 ## Decision thresholds used for new patients
 Rule: PPV >= 90% for POSITIVE calls and NPV >= 90% for NEGATIVE calls, using the one-sided 95% Clopper-Pearson lower bound >= target.
@@ -37,14 +37,14 @@ To prove PPV/NPV >= 90% with 95% confidence, a threshold must classify at least:
 
 ## Most informative variables (permutation importance)
 
-1. ptau217 (AUC drop 0.198)
-2. egfr (AUC drop 0.049)
-3. apoe4 (AUC drop 0.009)
-4. anemia (AUC drop 0.007)
-5. triglycerides (AUC drop -0.004)
-6. stroke (AUC drop -0.004)
-7. hypertension (AUC drop -0.004)
-8. clinical_stage (AUC drop -0.006)
+1. ptau217 (AUC drop 0.220)
+2. egfr (AUC drop 0.030)
+3. sleep_apnea (AUC drop 0.016)
+4. bmi (AUC drop 0.012)
+5. triglycerides (AUC drop 0.010)
+6. apoe4 (AUC drop 0.004)
+7. anemia (AUC drop 0.004)
+8. hypertension (AUC drop 0.001)
 
 ## Warnings
 

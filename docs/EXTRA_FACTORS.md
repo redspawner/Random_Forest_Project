@@ -25,4 +25,104 @@ The thyroid, sleep-apnoea, triglyceride and hyperfiltration effect sizes are **a
 comes from the literature summary, their size does not. The library in `data/synthetic/training_sets/` has a
 weak-evidence (×0.5) and a strong-evidence (×1.5) version so you can see how much this matters.
 
-RESULTS_PLACEHOLDER
+## Do the extra factors help? (600 grey-zone patients, no Aβ, strict 90 % / 95 % rule)
+
+AUC on 6,000 independent synthetic patients (version 3); in brackets the net lumbar punctures avoided per 100 at
+pt = 0.10 (decision curve, see MODEL_COMPARISON.md):
+
+| Variables | Logistic Regression | Spline LR | XGBoost | Random Forest |
+|---|---|---|---|---|
+| base 8 (current routine set) | 0.798 (+0.2) | 0.793 (−1.4) | 0.783 (+0.9) | 0.776 (−1.2) |
+| + BMI + sleep apnoea | **0.806** (+2.0) | 0.796 (0.0) | 0.789 (+0.2) | 0.783 (−1.2) |
+| + TSH + thyroid disease | 0.797 (+0.4) | 0.791 (−1.5) | 0.780 (+0.4) | 0.775 (−1.1) |
+| + MMSE | 0.798 (+0.6) | 0.792 (−1.3) | 0.783 (+0.7) | 0.775 (−2.4) |
+| + MRI (MTA, Fazekas) | 0.796 (+0.6) | 0.790 (−0.3) | 0.781 (+0.4) | 0.774 (−4.2) |
+| + all of them | 0.804 (+1.8) | 0.791 (−1.2) | 0.787 (+0.9) | 0.780 (−0.6) |
+
+**No combination lets any model prove PPV or NPV ≥ 90 % with 600 patients.**
+
+- **BMI and sleep apnoea** give the only consistent gain (about +0.006–0.008 AUC and a better Brier score).
+  Both are well-documented p-tau217 confounders and cheap to record, so they are now switched on
+  (`use_as_feature: true`).
+- **Thyroid, MMSE and the MRI ratings add nothing measurable here.**
+  - The thyroid effect is small and only assumed.
+  - MMSE mostly repeats the clinical stage.
+  - MTA and Fazekas are missing in half the patients, and inside the grey zone they differ little between
+    LP-positive and LP-negative patients (MTA about +0.13 points, MMSE about −0.4 points).
+  - They remain in the template as optional columns (`use_as_feature: false`). Switch them on and compare on the
+    real data: real MRI ratings may carry more information than this simulation assumes.
+
+## SMOTE and other resampling (`config.yaml → resampling`, training-only)
+
+| Method | n = 600 LR | n = 600 XGBoost | n = 200 LR | n = 200 XGBoost |
+|---|---|---|---|---|
+| none | AUC 0.804, Brier 0.145 | 0.787, 0.148 | 0.758, 0.172 | 0.759, 0.161 |
+| SMOTE | 0.803, **0.167** | 0.790, **0.166** | 0.758, **0.195** | 0.773, **0.177** |
+| random oversampling | 0.804, 0.166 | 0.793, 0.165 | 0.753, 0.199 | 0.746, 0.184 |
+| noise jitter | 0.804, 0.145 | 0.789, 0.147 | 0.756, 0.174 | 0.772, 0.155 |
+
+**It does not help, so it is not applied** (`method: none`):
+- ranking (AUC) is unchanged within ±0.015;
+- SMOTE and oversampling clearly damage calibration (Brier +0.02–0.03), because the model now believes about
+  50 % of grey-zone patients are LP-positive instead of about 30 %;
+- no method produced a single certified POSITIVE/NEGATIVE call.
+
+This is expected: resampling creates no new information, and PPV/NPV depend directly on prevalence. The
+option stays in the code (applied only to training folds) so that it can be re-checked on real data.
+
+## Monotone constraints for XGBoost
+
+The score is allowed only to rise with p-tau217, APOE ε4, clinical stage, MTA and eGFR, and only to fall with
+anaemia and MMSE. eGFR and anaemia point "the wrong way" on purpose: at equal p-tau217, poor kidney function or
+anaemia means the p-tau217 is inflated for non-amyloid reasons. **Accuracy was identical (AUC 0.787 vs 0.787
+at n = 600, 0.760 vs 0.759 at n = 200).** The constraints are now on, because they guarantee medically
+plausible behaviour for unusual patients at no cost.
+
+## More synthetic training data
+
+`python make_training_sets.py` writes `data/synthetic/training_sets/`:
+- version 3 at **150, 300, 600, 1,200, 2,500 and 5,000** grey-zone patients;
+- weak- and strong-effect scenarios;
+- the version-2 and version-1 generators for comparison.
+
+The sources are different studies for each part:
+- real CHS covariates;
+- real Knight ADRC CSF data;
+- Jansen 2015 and Ossenkoppele 2015 (amyloid prevalence);
+- Mattsson-Carlgren 2023 (p-tau217 vs amyloid);
+- Mielke 2022 and Pichet Binette 2023 (kidney, cardiovascular);
+- JAMA Neurol 2026 (anaemia, BMI);
+- Shir 2026 (sleep apnoea);
+- Wahlund 2017 and Persson 2017 (MTA).
+
+See `data/default_training/DATASET_CARD.md`.
+
+### What the training-set sizes show (10 variables, strict 90 % / 95 % rule)
+
+Tested on 6,000 independent version-3 patients:
+
+| Grey-zone training patients | Model | AUC (new patients) | Certified POSITIVE / NEGATIVE | LPs avoided | True PPV | True NPV |
+|---|---|---|---|---|---|---|
+| 150 | LR / XGBoost | 0.776 / 0.778 | none | 0 % | – | – |
+| 300 | LR / XGBoost | 0.792 / 0.793 | none | 0 % | – | – |
+| 600 | LR / XGBoost | 0.804 / 0.800 | none | 0 % | – | – |
+| 1,200 | LR / XGBoost | 0.810 / 0.806 | none | 0 % | – | – |
+| 2,500 | LR | 0.813 | ≥ 0.81 / none | 4.9 % | 93.5 % | – |
+| 2,500 | XGBoost | 0.807 | ≥ 0.73 / none | 7.6 % | 90.1 % | – |
+| 5,000 | LR | 0.816 | ≥ 0.87 / ≤ 0.10 | **30.8 %** | 96.4 % | 90.9 % |
+| 5,000 | XGBoost | 0.811 | ≥ 0.81 / ≤ 0.12 | 16.2 % | 94.4 % | 90.8 % |
+
+With realistic biology and routine variables only, the strict rule starts to pay off at about 2,500 grey-zone
+patients and becomes useful at about 5,000. When it does certify a zone, the true PPV and NPV on new patients
+stay above 90 %, so the rule does what it promises.
+
+## How to reproduce
+
+```
+python make_training_sets.py
+python tools/benchmark_models.py --external 6000
+```
+
+The variable and resampling experiments are reproduced by training on
+`data/synthetic/training_sets/v3_central_n600.xlsx` with the `use_as_feature` / `resampling` settings of
+`config.yaml` changed.

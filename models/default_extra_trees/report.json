@@ -1,5 +1,5 @@
 {
-  "created": "2026-11-20T11:25:13",
+  "created": "2026-11-20T11:56:44",
   "model_type": "extra_trees",
   "model_label": "Extra Trees",
   "source_file": "synthetic_training_dataset.xlsx",
@@ -9,9 +9,9 @@
     "missing_ptau217": 0,
     "outside_grey_zone": 0,
     "n_train": 600,
-    "n_lp_positive": 185,
-    "n_lp_negative": 415,
-    "prevalence": 0.30833333333333335
+    "n_lp_positive": 188,
+    "n_lp_negative": 412,
+    "prevalence": 0.31333333333333335
   },
   "features": [
     "egfr",
@@ -21,31 +21,33 @@
     "apoe4",
     "hypertension",
     "stroke",
-    "clinical_stage"
+    "clinical_stage",
+    "bmi",
+    "sleep_apnea"
   ],
   "cv": {
     "folds": 5,
     "repeats": 5,
     "repeat_aucs": [
-      0.7970302832953435,
-      0.8103809833930318,
-      0.8042982741777922,
-      0.8009899055682189,
-      0.8068642136112016
+      0.8026234249122083,
+      0.7931728981615369,
+      0.7990859326585416,
+      0.7904358603594298,
+      0.7909006403635613
     ]
   },
   "auc_model": {
-    "value": 0.8050537284272224,
+    "value": 0.7966071059698409,
     "ci": [
-      0.7617860752452147,
-      0.8470457556216932
+      0.7532346452351454,
+      0.8428778224151374
     ]
   },
   "auc_ptau217_alone": {
-    "value": 0.7818300227938783,
+    "value": 0.7714637988019005,
     "ci": [
-      0.73743054906903,
-      0.8244955652299855
+      0.7249061501891756,
+      0.8177276152451683
     ]
   },
   "thresholds": {
@@ -58,8 +60,8 @@
   },
   "oof_triage": {
     "n": 600,
-    "n_lp_positive": 185,
-    "n_lp_negative": 415,
+    "n_lp_positive": 188,
+    "n_lp_negative": 412,
     "called_positive": 0,
     "called_negative": 0,
     "inconclusive": 600,
@@ -105,20 +107,20 @@
     },
     "positives_ruled_in": {
       "k": 0,
-      "n": 185,
+      "n": 188,
       "value": 0.0,
       "ci": [
         0.0,
-        0.01974240414218442
+        0.01943044662682331
       ]
     },
     "negatives_ruled_out": {
       "k": 0,
-      "n": 415,
+      "n": 412,
       "value": 0.0,
       "ci": [
         0.0,
-        0.008849476978505426
+        0.008913626875775509
       ]
     },
     "errors": 0
@@ -149,8 +151,8 @@
     ],
     "metrics": {
       "n": 600,
-      "n_lp_positive": 185,
-      "n_lp_negative": 415,
+      "n_lp_positive": 188,
+      "n_lp_negative": 412,
       "called_positive": 0,
       "called_negative": 0,
       "inconclusive": 600,
@@ -196,20 +198,20 @@
       },
       "positives_ruled_in": {
         "k": 0,
-        "n": 185,
+        "n": 188,
         "value": 0.0,
         "ci": [
           0.0,
-          0.01974240414218442
+          0.01943044662682331
         ]
       },
       "negatives_ruled_out": {
         "k": 0,
-        "n": 415,
+        "n": 412,
         "value": 0.0,
         "ci": [
           0.0,
-          0.008849476978505426
+          0.008913626875775509
         ]
       },
       "errors": 0
@@ -218,43 +220,53 @@
   "importance": [
     {
       "feature": "ptau217",
-      "mean_auc_decrease": 0.19813741452295677,
-      "sd": 0.04881109668329943
-    },
-    {
-      "feature": "egfr",
-      "mean_auc_decrease": 0.02047541517421042,
-      "sd": 0.008880922488898699
+      "mean_auc_decrease": 0.23285492802142196,
+      "sd": 0.08142751482763216
     },
     {
       "feature": "anemia",
-      "mean_auc_decrease": 0.01953760989905575,
-      "sd": 0.011959471622527534
+      "mean_auc_decrease": 0.016325391076152794,
+      "sd": 0.004939768023804008
     },
     {
-      "feature": "stroke",
-      "mean_auc_decrease": 0.0012373819602735738,
-      "sd": 0.0024979632073510744
+      "feature": "egfr",
+      "mean_auc_decrease": 0.01323793038441105,
+      "sd": 0.012213954867006148
     },
     {
-      "feature": "apoe4",
-      "mean_auc_decrease": 0.0011071312276131856,
-      "sd": 0.01702950501075366
+      "feature": "sleep_apnea",
+      "mean_auc_decrease": 0.011303966168250024,
+      "sd": 0.005468872315139055
     },
     {
       "feature": "triglycerides",
-      "mean_auc_decrease": -0.00112015630087916,
-      "sd": 0.00958838271480265
+      "mean_auc_decrease": 0.007488610376000784,
+      "sd": 0.004897381257770729
+    },
+    {
+      "feature": "bmi",
+      "mean_auc_decrease": 0.005382879051159373,
+      "sd": 0.007800522940809179
     },
     {
       "feature": "clinical_stage",
-      "mean_auc_decrease": -0.0019277108433734334,
-      "sd": 0.005922700039624426
+      "mean_auc_decrease": 0.0011041675636383496,
+      "sd": 0.006515623504011381
+    },
+    {
+      "feature": "apoe4",
+      "mean_auc_decrease": -0.00021136065616938403,
+      "sd": 0.007374940413226062
     },
     {
       "feature": "hypertension",
-      "mean_auc_decrease": -0.0054184304786713796,
-      "sd": 0.012540609264253539
+      "mean_auc_decrease": -0.0003093622103164548,
+      "sd": 0.01567238197016631
+    },
+    {
+      "feature": "stroke",
+      "mean_auc_decrease": -0.000823635241099705,
+      "sd": 0.0020902628426682167
     }
   ],
   "decision_rule": {

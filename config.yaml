@@ -157,6 +157,14 @@ models:
     colsample_bytree: 0.8
     reg_lambda: 1.0
     reg_alpha: 0.0
+    monotone:               # direction constraints (score may only rise / fall with the variable): same
+      ptau217: 1            # accuracy here, but medically plausible behaviour is guaranteed
+      apoe4: 1
+      clinical_stage: 1
+      egfr: 1               # at equal p-tau217, low eGFR means kidney-inflated p-tau217 -> less likely amyloid
+      anemia: -1            # idem for anaemia
+      mta_score: 1
+      mmse: -1
   spline_logistic:          # logistic regression with spline terms (GAM-like): effects may bend,
     C: 0.1                  # e.g. a kidney effect that starts only below eGFR ~60
     n_knots: 3
@@ -335,7 +343,7 @@ features:
   # --- Optional routine factors (version-3 analysis, docs/EXTRA_FACTORS.md) ---------------------------------
   # Blank columns are simply missing. use_as_feature says whether the models use them.
   - name: bmi
-    use_as_feature: false
+    use_as_feature: true    # p-tau217 confounder (literature); small gain in docs/EXTRA_FACTORS.md
     description: Body mass index (weight / height^2) - lower BMI raises plasma p-tau217
     unit: kg/m2
     min: 12
@@ -344,7 +352,7 @@ features:
     aliases: [imc, body_mass_index]
 
   - name: sleep_apnea
-    use_as_feature: false
+    use_as_feature: true    # p-tau217 confounder (literature); small gain in docs/EXTRA_FACTORS.md
     type: binary
     description: Known obstructive sleep apnoea (diagnosis or CPAP), yes/no - associated with lower p-tau217
     unit: 0/1

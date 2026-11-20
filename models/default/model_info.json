@@ -1,6 +1,6 @@
 {
   "model_type": "random_forest",
-  "created": "2026-11-20T11:24:40",
+  "created": "2026-11-20T11:55:47",
   "source_file": "synthetic_training_dataset.xlsx",
   "n_train": 600
 }

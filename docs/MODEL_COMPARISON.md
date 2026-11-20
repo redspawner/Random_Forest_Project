@@ -30,16 +30,26 @@ What changed:
 
 ### The shipped models (600 grey-zone patients; independent check on 6,000 new synthetic patients)
 
+The default dataset is version 3, and the models use 10 variables: the 8 routine ones plus BMI and sleep apnoea
+(docs/EXTRA_FACTORS.md).
+
 | Model | AUC (CV) | AUC (6,000 new) | Certified POSITIVE / NEGATIVE threshold | LPs avoided | Net LPs avoided per 100 at pt = 0.10 |
 |---|---|---|---|---|---|
-| Random Forest | 0.801 | 0.775 | none / none | 0 % | −0.8 |
-| Logistic Regression | 0.802 | 0.790 | none / none | 0 % | −1.5 |
-| Spline Logistic Regression | 0.804 | 0.787 | none / none | 0 % | −0.2 |
-| Gradient Boosting | 0.797 | 0.781 | none / none | 0 % | −0.2 |
-| XGBoost | 0.800 | 0.784 | none / none | 0 % | −0.2 |
-| Extra Trees | 0.805 | 0.790 | none / none | 0 % | 0.0 |
-| Support Vector Machine | 0.798 | 0.777 | none / none | 0 % | −0.4 |
-| Ensemble (RF + LR + GB) | 0.804 | 0.792 | none / none | 0 % | +0.8 |
+| Random Forest | 0.803 | 0.783 | none / none | 0 % | −1.2 |
+| Logistic Regression | 0.797 | **0.806** | none / none | 0 % (nested: 0.8 %, NPV 80 %) | +2.0 |
+| Spline Logistic Regression | 0.809 | 0.796 | none / none | 0 % | 0.0 |
+| Gradient Boosting | 0.791 | 0.788 | none / none | 0 % | +0.2 |
+| XGBoost (monotone) | 0.796 | 0.789 | none / none | 0 % | +0.5 |
+| Extra Trees | 0.797 | 0.797 | none / none | 0 % | +0.1 |
+| Support Vector Machine | 0.788 | 0.785 | none / none | 0 % | +0.6 |
+| Ensemble (RF + LR + GB) | 0.802 | 0.803 | none / none | 0 % | +1.4 |
+
+In one nested fold the Logistic Regression certified a small rule-out zone that was right in only 80 % of the
+held-out patients. This is why the nested estimate is reported: a threshold proven on 480 patients can still miss
+the target on new ones.
+
+The table of the previous version (version-2 data, 8 variables) gave the same picture: AUC 0.775–0.792 on new
+patients and no certified threshold.
 
 p-tau217 alone inside the grey zone: AUC ≈ 0.78.
 

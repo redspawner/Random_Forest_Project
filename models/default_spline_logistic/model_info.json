@@ -1,6 +1,6 @@
 {
   "model_type": "spline_logistic",
-  "created": "2026-11-20T11:25:31",
+  "created": "2026-11-20T11:57:50",
   "source_file": "synthetic_training_dataset.xlsx",
   "n_train": 600
 }

@@ -16,8 +16,10 @@ safely**.
                                        └─ otherwise     → INCONCLUSIVE → lumbar puncture (as before)
 ```
 
-The LP result is the label used to train the model. The models use **8 routine variables**: p-tau217, APOE ε4,
-clinical stage, eGFR, anaemia, triglycerides, hypertension and stroke (see section 4). **Plasma Aβ42/Aβ40 are
+The LP result is the label used to train the model. The models use **10 routine variables**: p-tau217, APOE ε4,
+clinical stage, eGFR, anaemia, triglycerides, hypertension, stroke, BMI and sleep apnoea (see section 4).
+TSH / thyroid disease, MMSE and the MRI ratings (MTA, Fazekas) are **optional template columns**, tested but
+switched off ([`docs/EXTRA_FACTORS.md`](docs/EXTRA_FACTORS.md)). **Plasma Aβ42/Aβ40 are
 switched off** because the Coimbra cohort does not measure them; set `use_as_feature: true` in `config.yaml` to
 use them again.
 
@@ -37,11 +39,16 @@ confidence, and has the same safety checks. The app also offers:
 - a **global SHAP view** in the model report;
 - **decision curve analysis** and a side-by-side comparison in the **Compare models** tab.
 
-**Realistic default data (generator version 2).** The shipped dataset combines:
+**Realistic default data (generator version 3).** The shipped dataset combines:
 - real clinical covariates (Cardiovascular Health Study);
 - real CSF amyloid data (Knight ADRC);
 - non-linear, literature-based biology: a threshold effect of kidney function, p-tau217 rising sigmoidally with
-  amyloid load, and an APOE dose effect that changes with age.
+  amyloid load, and an APOE dose effect that changes with age;
+- extra routine factors: thyroid, MRI, MMSE, BMI and sleep apnoea.
+
+`make_training_sets.py` writes training sets of 150 to 5,000 patients and alternative scenarios to
+`data/synthetic/training_sets/`. SMOTE and other resampling methods were tested; they do not help (they damage
+calibration), so they are off.
 
 **Honest result:** with these 8 routine variables and 600 grey-zone patients, no model can *prove* 90 % PPV or NPV
 (the grey-zone AUC tops out at about 0.80, whichever model is used). So the shipped models classify every
@@ -259,8 +266,10 @@ every simulated vs published value, and every assumption.
 Download `templates/patient_data_template.xlsx` (or use the button in the app). Each patient goes on one row of the sheet
 **Patients**:
 
-Only **13 columns** (plus the LP result for training). The models use **8 variables**; the other
-columns are inputs from which a model variable is computed.
+**19 columns** (plus the LP result for training). The models use **10 variables**; the other columns are
+inputs from which a model variable is computed, or optional factors (`bmi`, `sleep_apnea` are used; `tsh`,
+`thyroid_disease`, `mmse`, `mta_score`, `fazekas` are read but only used if switched on in `config.yaml`).
+Every column except `ptau217` may be left blank.
 
 | column | unit | used as | notes |
 |---|---|---|---|

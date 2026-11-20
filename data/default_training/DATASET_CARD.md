@@ -1,9 +1,9 @@
-# Dataset card - default training dataset (generator version 2)
+# Dataset card - default training dataset (generator version 3)
 
 **File:** `data/default_training/synthetic_training_dataset.xlsx`  
-**SHA-256:** `4e604a4732f3933e08db3e03778ab0d85fc78b7473958e10ec06c9cbf96071be`  
-**Patients:** 600 grey-zone patients (p-tau217 0.14-0.43 pg/mL), 185 LP-positive / 415 LP-negative  
-**Generator:** `greyzone_rf/synthetic_v2.py` via `grey_zone_cohort(n=600, seed=2024, real=True, version=2)`
+**SHA-256:** `10004f048c622077c6668ebec9b2c50afe36571acc9ad57c91ebf0ab6649e0be`  
+**Patients:** 600 grey-zone patients (p-tau217 0.14-0.43 pg/mL), 188 LP-positive / 412 LP-negative  
+**Generator:** `greyzone_rf/synthetic_v2.py` via `grey_zone_cohort(n=600, seed=2024, real=True, version=3)`
 
 ## What this is
 
@@ -20,7 +20,14 @@
    - plasma p-tau217 rising **sigmoidally** with amyloid load and with stage-related tau;
    - a **threshold (hinge) kidney effect**: none above eGFR 70, steeper below 45;
    - anaemia, BMI, hypertension and stroke effects as in version 1.
-4. Grey-zone patients were selected with the Stage-1 cut-offs.
+4. **Version 3 extra routine factors** (separate random stream; docs/EXTRA_FACTORS.md):
+   - TSH and known thyroid disease (+10 % p-tau217, assumed);
+   - obstructive sleep apnoea (-13 %);
+   - a triglyceride effect (-8 % per log unit);
+   - eGFR hyperfiltration above 90;
+   - MRI MTA and Fazekas ratings (present in about 1/3-1/2 of patients);
+   - MMSE.
+5. Grey-zone patients were selected with the Stage-1 cut-offs.
 
 **Plasma Abeta42/Abeta40 are not included:** they are not measured in the Coimbra cohort. Only the columns of the template are kept.
 
@@ -30,12 +37,12 @@ Version 1 (`greyzone_rf/synthetic.py`, mostly additive log-linear effects) is ke
 
 | Quantity | Published | Simulated | Source |
 |---|---|---|---|
-| auc_ptau217 | 0.95 | 0.953 | Lumipulse plasma p-tau217 vs CSF, memory clinic (Alzheimer's Res Ther 2025) |
-| grey_zone_fraction | 0.15-0.35 | 0.342 | intermediate zone with two cut-offs (several Lumipulse studies) |
-| npv_below_lower_cutoff | ~0.95 | 0.941 | two-cut-off design: lower cut-off set for ~95 % NPV |
-| ppv_above_upper_cutoff | ~0.95 | 0.981 | two-cut-off design: upper cut-off set for ~95 % PPV |
-| ptau217_ratio_anemia | 1.4 | 1.393 | optimal p-tau217 cut-off with anaemia 0.595 vs 0.425 pg/mL (JAMA Neurol 2026) |
-| ptau217_ratio_egfr_30_45_vs_60plus | >1 (threshold) | 1.641 | CKD raises p-tau217, little effect above eGFR ~60 (Mielke 2022; Pichet Binette 2023) |
+| auc_ptau217 | 0.95 | 0.952 | Lumipulse plasma p-tau217 vs CSF, memory clinic (Alzheimer's Res Ther 2025) |
+| grey_zone_fraction | 0.15-0.35 | 0.34 | intermediate zone with two cut-offs (several Lumipulse studies) |
+| npv_below_lower_cutoff | ~0.95 | 0.939 | two-cut-off design: lower cut-off set for ~95 % NPV |
+| ppv_above_upper_cutoff | ~0.95 | 0.98 | two-cut-off design: upper cut-off set for ~95 % PPV |
+| ptau217_ratio_anemia | 1.4 | 1.389 | optimal p-tau217 cut-off with anaemia 0.595 vs 0.425 pg/mL (JAMA Neurol 2026) |
+| ptau217_ratio_egfr_30_45_vs_60plus | >1 (threshold) | 1.654 | CKD raises p-tau217, little effect above eGFR ~60 (Mielke 2022; Pichet Binette 2023) |
 | csf_vs_amyloid_state_discordance | 0.05-0.10 | 0.04 | CSF vs amyloid-PET discordance in memory clinics |
 
 ## Sources
@@ -60,4 +67,4 @@ Effect sizes come from abstracts and summaries (the full texts could not be open
 
 ## Missing values in this file (% of patients)
 
-egfr 6%, creatinine 48%, triglycerides 8%, hemoglobin 5%, apoe4 9%, hypertension 3%, stroke 2%, clinical_stage 2%.
+egfr 6%, creatinine 48%, triglycerides 8%, hemoglobin 5%, apoe4 9%, hypertension 3%, stroke 2%, clinical_stage 2%, bmi 4%, sleep_apnea 6%, tsh 11%, thyroid_disease 3%, mta_score 67%, fazekas 46%, mmse 4%.

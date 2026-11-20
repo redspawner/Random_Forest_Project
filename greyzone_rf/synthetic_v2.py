@@ -247,13 +247,14 @@ CALIBRATION_TARGETS_V2 = {
 }
 
 
-def calibration_report_v2(n: int = 30000, seed: int = 0, lower: float = 0.14, upper: float = 0.43) -> pd.DataFrame:
-    """Compare the version-2 population (with real CHS covariates) with the literature targets."""
+def calibration_report_v2(n: int = 30000, seed: int = 0, lower: float = 0.14, upper: float = 0.43,
+                          extended: bool = False) -> pd.DataFrame:
+    """Compare the version-2 (or, with ``extended``, version-3) population with the literature targets."""
     from sklearn.metrics import roc_auc_score
 
     from .synthetic import _chs_cache, real_clinical_base
 
-    pop = simulate_memory_clinic_v2(n, seed, real_clinical_base(n, seed, chs=_chs_cache()))
+    pop = simulate_memory_clinic_v2(n, seed, real_clinical_base(n, seed, chs=_chs_cache()), extended=extended)
     y = (pop["lp_result"] == "Positive").to_numpy()
     p = pop["ptau217"].to_numpy()
     neg = ~y

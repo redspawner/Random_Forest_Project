@@ -33,6 +33,19 @@ later with a Coimbra cohort. Answer in English. The user's own guidelines overri
   rejected 2,500 as unrealistic). `train.py --default` retrains it. The app retrains it automatically if
   it is missing or incompatible.
 
+## Update 2026-11-20 (third round): extra factors, SMOTE, training-set library
+- **Generator version 3** = v2 + TSH / thyroid disease, sleep apnoea, MRI MTA / Fazekas (about half missing),
+  MMSE, triglyceride and hyperfiltration effects (separate random stream; v2 is unchanged). It is the new
+  default dataset.
+- **Model variables: 10** (base 8 + BMI + sleep apnoea, the only consistent small gain). Thyroid, MMSE and MRI
+  are in the template but `use_as_feature: false` (no measurable gain in the simulation; test on real data).
+- **SMOTE / random oversampling / noise:** `greyzone_rf/resampling.py`, training-only, OFF. No AUC gain; worse
+  calibration.
+- **XGBoost monotone constraints:** on (same accuracy, plausible directions).
+- **`make_training_sets.py`:** v3 at 150-5000 patients, weak/strong-effect scenarios, v2, v1
+  (`data/synthetic/training_sets/`).
+- Results: `docs/EXTRA_FACTORS.md`. Strict 90/90 + 95 % still certifies nothing with 600 patients.
+
 ## Update 2026-11-20 (second round): realistic data, no Aβ, SHAP, DCA, XGBoost
 - **Aβ42/Aβ40 are switched off** (not measured in Coimbra). `use_as_feature: false` and `in_template: false`
   for ab42, ab40 and both ratios. The models use 8 variables; the template has 13 columns.

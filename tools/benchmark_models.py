@@ -5,7 +5,7 @@
 
 For every model: repeated cross-validation, thresholds with the PPV/NPV rule, nested validation
 (honest estimate) and, optionally, the true PPV/NPV on a large independent synthetic cohort drawn
-from the same generator as the default dataset (version 2, other random seed).
+from the same generator as the default dataset (version 3, other random seed).
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ def main() -> None:
     if args.external:
         from greyzone_rf.synthetic import grey_zone_cohort
 
-        cohort = grey_zone_cohort(args.external, seed=777, prefix="EXT", real=True, version=2)
+        cohort = grey_zone_cohort(args.external, seed=777, prefix="EXT", real=True, version=3)
         ext = (cohort["lp_result"].map({"Positive": 1, "Negative": 0}).to_numpy(),
                prepare_table(cohort.drop(columns=["lp_result"]), cfg))
     print("| Model | AUC (CV) | POS >= | NEG <= | LPs avoided (nested) | Wrong (nested) | PPV / NPV (nested) |"
